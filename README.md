@@ -104,6 +104,13 @@ Name: hello_world.txt Mode: 644 Size: 12
 hello world!
 ```
 
-Why `pathlib` and not [`filepath`](https://golang.org/pkg/path/filepath/)?
-----------------------------------------------------------------------------
+Frequently Asked Questions
+--------------------------
+
+#### Why `pathlib` and not [`filepath`](https://golang.org/pkg/path/filepath/)?
+
 [`filepath`](https://golang.org/pkg/path/filepath/) is a package that is tightly coupled to the OS filesystem APIs and also is not written in an object-oriented way. `pathlib` uses [`afero`](https://github.com/spf13/afero) under the hood for its abstracted filesystem interface, which allows you to represent a vast array of different filesystems (e.g. SFTP, HTTP, in-memory, and of course OS filesystems) using the same `Path` object.
+
+#### Why not use `afero` directly? 
+
+You certainly could, however `afero` does not represent a _filesystem object_ in an object-oriented way. It is only object-oriented with respect to the filesystem itself. `pathlib` is simply a thin layer on top of `afero` that provides the filesystem-object-orientation.
