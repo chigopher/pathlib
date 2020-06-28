@@ -60,6 +60,45 @@ snap
 software
 ```
 
+### In-memory FS
+
+#### Code
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/chigopher/pathlib"
+	"github.com/spf13/afero"
+)
+
+func main() {
+	// Create a path using an in-memory filesystem
+	path := pathlib.NewPathAfero("/", afero.NewMemMapFs())
+	hello := path.Join("hello_world.txt")
+	hello.WriteFile([]byte("hello world!"), 0o644)
+
+	subpaths, err := path.ReadDir()
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+
+	for _, subpath := range subpaths {
+		fmt.Printf("Name: %s Mode: %o Size: %d\n", subpath.Name(), subpath.Mode(), subpath.Size())
+	}
+}
+```
+
+#### Output
+
+```bash
+[ltclipp@landon-virtualbox examples]$ ./examples 
+Name: hello_world.txt Mode: 644 Size: 12
+```
+
 Why `pathlib` and not [`filepath`](https://golang.org/pkg/path/filepath/)?
 ----------------------------------------------------------------------------
 [`filepath`](https://golang.org/pkg/path/filepath/) is a package that is tightly coupled to the OS filesystem APIs and also is not written in an object-oriented way. `pathlib` uses [`afero`](https://github.com/spf13/afero) under the hood for its abstracted filesystem interface, which allows you to represent a vast array of different filesystems (e.g. SFTP, HTTP, in-memory, and of course OS filesystems) using the same `Path` object.
