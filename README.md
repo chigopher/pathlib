@@ -1,2 +1,4 @@
-# pathlib
-Golang's own object-oriented path library
+pathlib
+========
+
+Inspired by Python's pathlib, made better by Golang.
