@@ -89,14 +89,19 @@ func main() {
 	for _, subpath := range subpaths {
 		fmt.Printf("Name: %s Mode: %o Size: %d\n", subpath.Name(), subpath.Mode(), subpath.Size())
 	}
+
+	bytes, _ := hello.ReadFile()
+	fmt.Println(string(bytes))
 }
 ```
 
 #### Output
 
 ```bash
+[ltclipp@landon-virtualbox examples]$ go build
 [ltclipp@landon-virtualbox examples]$ ./examples 
 Name: hello_world.txt Mode: 644 Size: 12
+hello world!
 ```
 
 Why `pathlib` and not [`filepath`](https://golang.org/pkg/path/filepath/)?
