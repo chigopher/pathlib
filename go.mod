@@ -1,4 +1,4 @@
-module git.w2k.jumptrading.com/linux/pathlib
+module github.com/chigopher/pathlib
 
 go 1.14
 
