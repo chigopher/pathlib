@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -336,4 +337,8 @@ func (p *Path) GetLatest() (*Path, error) {
 // Glob returns all matches of pattern relative to this object's path.
 func (p *Path) Glob(pattern string) ([]*Path, error) {
 	return Glob(p.afero.Fs, p.Join(pattern).Path())
+}
+
+func (p *Path) Chtimes(atime time.Time, mtime time.Time) error {
+	return p.afero.Chtimes(p.Path(), atime, mtime)
 }

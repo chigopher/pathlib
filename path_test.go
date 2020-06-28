@@ -126,10 +126,12 @@ func (p *PathSuite) TestRenamePath() {
 }
 
 func (p *PathSuite) TestGetLatest() {
+	now := time.Now()
 	for i := 0; i < 5; i++ {
 		file := p.tmpdir.Join(fmt.Sprintf("file%d.txt", i))
 		require.NoError(p.T(), file.WriteFile([]byte(fmt.Sprintf("hello %d", i)), 0o644))
-		time.Sleep(time.Duration(2) * time.Millisecond)
+		require.NoError(p.T(), file.Chtimes(now, now))
+		now = now.Add(time.Duration(1) * time.Hour)
 	}
 
 	latest, err := p.tmpdir.GetLatest()
