@@ -1,6 +1,8 @@
 pathlib
 ========
 
+[![Build Status](https://travis-ci.org/chigopher/pathlib.svg?branch=master)](https://travis-ci.org/chigopher/pathlib) 
+
 Inspired by Python's pathlib, made better by Golang.
 
 `pathlib` is an "object-oriented" package for manipulating filesystem path objects. It takes many cues from [Python's pathlib](https://docs.python.org/3/library/pathlib.html), although it does not strictly adhere to its design philosophy. It provides a simple, intuitive, easy, and abstracted interface for dealing with many different types of filesystems.
