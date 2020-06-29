@@ -29,6 +29,8 @@ func NewPathAfero(path string, fs afero.Fs) *Path {
 	}
 }
 
+// Glob returns all of the path objects matched by the given pattern
+// inside of the afero filesystem.
 func Glob(fs afero.Fs, pattern string) ([]*Path, error) {
 	matches, err := afero.Glob(fs, pattern)
 	if err != nil {
@@ -53,6 +55,7 @@ func getFsName(fs afero.Fs) string {
 	return ""
 }
 
+// Afero returns the internal afero object.
 func (p *Path) Afero() afero.Afero {
 	return p.afero
 }
@@ -96,6 +99,8 @@ func (p *Path) Name() string {
 	return filepath.Base(p.path)
 }
 
+// Join joins the current object's path with the given elements and returns
+// the resulting Path object.
 func (p *Path) Join(elems ...string) *Path {
 	paths := []string{p.path}
 	for _, path := range elems {
@@ -104,18 +109,29 @@ func (p *Path) Join(elems ...string) *Path {
 	return NewPathAfero(filepath.Join(paths...), p.afero.Fs)
 }
 
+// WriteFile writes the given data to the path (if possible). If the file exists,
+// the file is truncated. If the file is a directory, or the path doesn't exist,
+// an error is returned.
 func (p *Path) WriteFile(data []byte, perm os.FileMode) error {
 	return errors.Wrapf(p.afero.WriteFile(p.Path(), data, perm), "Failed to write file")
 }
 
+// ReadFile reads the given path and returns the data. If the file doesn't exist
+// or is a directory, an error is returned.
 func (p *Path) ReadFile() ([]byte, error) {
 	bytes, err := p.afero.ReadFile(p.Path())
 	return bytes, errors.Wrapf(err, "failed to read file")
 }
 
-func (p *Path) ReadDir() ([]os.FileInfo, error) {
-	fileInfo, err := p.afero.ReadDir(p.Path())
-	return fileInfo, errors.Wrapf(err, "failed to read directory")
+// ReadDir reads the current path and returns a list of the corresponding
+// Path objects.
+func (p *Path) ReadDir() ([]*Path, error) {
+	var paths []*Path
+	fileInfos, err := p.afero.ReadDir(p.Path())
+	for _, fileInfo := range fileInfos {
+		paths = append(paths, p.Join(fileInfo.Name()))
+	}
+	return paths, errors.Wrapf(err, "failed to read directory")
 }
 
 // chmoder should really be part of afero. TODO: Send a PR to upstream
@@ -123,6 +139,7 @@ type chmoder interface {
 	Chmod(name string, mode os.FileMode) error
 }
 
+// Chmod changes the file mode of the given path
 func (p *Path) Chmod(mode os.FileMode) error {
 	chmodCaller, ok := p.afero.Fs.(chmoder)
 	if !ok {
@@ -136,6 +153,8 @@ type mkdir interface {
 	Mkdir(name string, perm os.FileMode) error
 }
 
+// Mkdir makes the current dir. If the parents don't exist, an error
+// is returned.
 func (p *Path) Mkdir(perm os.FileMode) error {
 	mkdirCaller, ok := p.afero.Fs.(mkdir)
 	if !ok {
@@ -148,6 +167,7 @@ type mkdirAll interface {
 	MkdirAll(name string, perm os.FileMode) error
 }
 
+// MkdirAll makes all of the directories up to, and including, the given path.
 func (p *Path) MkdirAll(perm os.FileMode) error {
 	mkdirCaller, ok := p.afero.Fs.(mkdirAll)
 	if !ok {
@@ -184,6 +204,7 @@ type remover interface {
 	Remove(name string) error
 }
 
+// Remove deletes/unlinks/destroys the given path
 func (p *Path) Remove() error {
 	removeCaller, ok := p.afero.Fs.(remover)
 	if !ok {
@@ -197,6 +218,7 @@ type removeAll interface {
 	RemoveAll(name string) error
 }
 
+// RemoveAll removes the given path and all of its children.
 func (p *Path) RemoveAll() error {
 	removeAllCaller, ok := p.afero.Fs.(removeAll)
 	if !ok {
@@ -216,6 +238,7 @@ func (p *Path) IsDir() (bool, error) {
 	return p.afero.IsDir(p.path)
 }
 
+// IsFile returns true if the given path is a file.
 func (p *Path) IsFile() (bool, error) {
 	fileInfo, err := p.afero.Stat(p.path)
 	if err != nil {
@@ -224,6 +247,7 @@ func (p *Path) IsFile() (bool, error) {
 	return fileInfo.Mode().IsRegular(), nil
 }
 
+// IsSymlink returns true if the given path is a symlink.
 func (p *Path) IsSymlink() (bool, error) {
 	fileInfo, err := p.afero.Stat(p.path)
 	if err != nil {
@@ -237,6 +261,7 @@ func (p *Path) IsSymlink() (bool, error) {
 	return isSymlink, nil
 }
 
+// Stat returns the os.FileInfo of the given path
 func (p *Path) Stat() (os.FileInfo, error) {
 	return p.afero.Stat(p.path)
 }
@@ -266,6 +291,9 @@ func (p *Path) Equals(other *Path) (bool, error) {
 	return selfResolved.Path() == otherResolved.Path(), nil
 }
 
+// RelativeTo computes a relative version of path to the other path. For instance,
+// if the object is /path/to/foo.txt and you provide /path/ as the argment, the
+// returned Path object will represent to/foo.txt.
 func (p *Path) RelativeTo(other *Path) (*Path, error) {
 	thisParts := strings.Split(p.path, "/")
 	// Normalize
@@ -322,11 +350,19 @@ func (p *Path) GetLatest() (*Path, error) {
 			greatestFileSeen = p.Join(file.Name())
 		}
 
-		fileStat, err := greatestFileSeen.Stat()
+		greatestMtime, err := greatestFileSeen.Mtime()
 		if err != nil {
 			return nil, err
 		}
-		if file.ModTime().After(fileStat.ModTime()) {
+
+		thisMtime, err := file.Mtime()
+		// There is a possible race condition where the file is deleted after
+		// our call to ReadDir. We throw away the error if it isn't
+		// os.ErrNotExist
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		if thisMtime.After(greatestMtime) {
 			greatestFileSeen = p.Join(file.Name())
 		}
 	}
@@ -339,6 +375,16 @@ func (p *Path) Glob(pattern string) ([]*Path, error) {
 	return Glob(p.afero.Fs, p.Join(pattern).Path())
 }
 
+// Chtimes changes the modification and access time of the given path.
 func (p *Path) Chtimes(atime time.Time, mtime time.Time) error {
 	return p.afero.Chtimes(p.Path(), atime, mtime)
+}
+
+// Mtime returns the modification time of the given path.
+func (p *Path) Mtime() (time.Time, error) {
+	stat, err := p.Stat()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return stat.ModTime(), nil
 }
