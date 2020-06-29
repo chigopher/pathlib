@@ -1,7 +1,7 @@
 pathlib
 ========
 
-[![Build Status](https://travis-ci.org/chigopher/pathlib.svg?branch=master)](https://travis-ci.org/chigopher/pathlib) 
+[![Build Status](https://travis-ci.org/chigopher/pathlib.svg?branch=master)](https://travis-ci.org/chigopher/pathlib) ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/chigopher/pathlib?include_prereleases) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/chigopher/pathlib) ![Codecov](https://img.shields.io/codecov/c/github/chigopher/pathlib)
 
 Inspired by Python's pathlib, made better by Golang.
 
