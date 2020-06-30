@@ -116,3 +116,7 @@ Frequently Asked Questions
 #### Why not use `afero` directly? 
 
 You certainly could, however `afero` does not represent a _filesystem object_ in an object-oriented way. It is only object-oriented with respect to the filesystem itself. `pathlib` is simply a thin layer on top of `afero` that provides the filesystem-object-orientation.
+
+#### Does this provide any benefit to my unit tests?
+
+Most certainly! `pathlib` allows you to create [in-memory filesystems](#in-memory-fs), which have the nice property of being automatically garbage collected by Golang's GC when they go out of scope. You don't have to worry about defering any `Remove()` functions or setting up temporary dirs in `/tmp`. Just instantiate a `MemMapFs` and you're good to go!
