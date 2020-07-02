@@ -106,6 +106,17 @@ Name: hello_world.txt Mode: 644 Size: 12
 hello world!
 ```
 
+Design Philosophy
+------------------
+
+The design philosophy of this package is to be as thin of a layer as possible to existing community-standard packages, like `io`, `afero`, and `os`. Additional functionality is provided in consise and logical ways to extend the existing community APIs. The API herein can be grouped into a few main categories:
+
+1. `github.com/spf13/afero.Fs` wrappers: these are methods that have nearly identical signatures to `afero.Fs`, with the exception of the path string (which is stored in the `pathlib.Path` object itself. `afero.Fs` is an object that is meant to interact directly with the filesystem.
+2. `github.com/spf13/afero.Afero` wrappers: these are methods that again have nearly identical signatures to `afero.Afero`. `afero.Afero` is a convenience object that provides higher-level behavior to the underlying `afero.Fs` object.
+3. Filesystem-specific methods: these are  methods that are implemented by some, but not all, of the afero filesystems. These methods may fail at runtime if the filesystem you provide does not implement the required interface.
+4. [Python's Pathlib](https://docs.python.org/3/library/pathlib.html)-inspired methods: these are methods that are not implemented in the previous two steps, and that provide the power behind the object-oriented design. 
+5. `github.com/chigopher/pathlib`-specific methods: these are miscellaneous methods that are not covered by any of the previous categories. These methods are typically conveniences around methods in one of the previous categories.
+
 Frequently Asked Questions
 --------------------------
 
