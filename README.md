@@ -1,7 +1,7 @@
 pathlib
 ========
 
-[![Build Status](https://travis-ci.org/chigopher/pathlib.svg?branch=master)](https://travis-ci.org/chigopher/pathlib) [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chigopher/pathlib) ![GitHub release (latest by date)](https://img.shields.io/github/v/release/chigopher/pathlib?style=flat-square) [![Codecov](https://img.shields.io/codecov/c/github/chigopher/pathlib?style=flat-square)](https://codecov.io/gh/chigopher/pathlib) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/chigopher/pathlib?style=flat-square)
+[![Build Status](https://travis-ci.org/chigopher/pathlib.svg?branch=master)](https://travis-ci.org/chigopher/pathlib) [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chigopher/pathlib) ![GitHub release (latest by date)](https://img.shields.io/github/v/release/chigopher/pathlib?style=flat-square) [![Codecov](https://img.shields.io/codecov/c/github/chigopher/pathlib?style=flat-square)](https://codecov.io/gh/chigopher/pathlib) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/chigopher/pathlib?style=flat-square) ![License](https://img.shields.io/github/license/chigopher/pathlib?style=flat-square)
 
 Inspired by Python's pathlib, made better by Golang.
 
