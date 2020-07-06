@@ -1,6 +1,7 @@
 package pathlib
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,8 +13,12 @@ import (
 
 // Path is an object that represents a path
 type Path struct {
-	path  string
-	afero afero.Afero
+	path string
+	fs   afero.Fs
+
+	// DefaultFileMode is the mode that is used when creating new files in functions
+	// that do not accept os.FileMode as a parameter.
+	DefaultFileMode os.FileMode
 }
 
 // NewPath returns a new OS path
@@ -24,8 +29,9 @@ func NewPath(path string) *Path {
 // NewPathAfero returns a Path object with the given Afero object
 func NewPathAfero(path string, fs afero.Fs) *Path {
 	return &Path{
-		path:  path,
-		afero: afero.Afero{Fs: fs},
+		path:            path,
+		fs:              fs,
+		DefaultFileMode: 0o644,
 	}
 }
 
@@ -55,48 +61,194 @@ func getFsName(fs afero.Fs) string {
 	return ""
 }
 
-// Afero returns the internal afero object.
-func (p *Path) Afero() afero.Afero {
-	return p.afero
+// Fs returns the internal afero.Fs object.
+func (p *Path) Fs() afero.Fs {
+	return p.fs
 }
 
 func (p *Path) doesNotImplementErr(interfaceName string) error {
-	return errors.Wrapf(ErrDoesNotImplement, "Path's afero filesystem %s does not implement %s", getFsName(p.afero.Fs), interfaceName)
+	return errors.Wrapf(ErrDoesNotImplement, "Path's afero filesystem %s does not implement %s", getFsName(p.fs), interfaceName)
+}
+
+// *******************************
+// * afero.Fs wrappers           *
+// *******************************
+
+// Create creates a file if possible, returning the file and an error, if any happens.
+func (p *Path) Create() (afero.File, error) {
+	return p.Fs().Create(p.Path())
+}
+
+// Mkdir makes the current dir. If the parents don't exist, an error
+// is returned.
+func (p *Path) Mkdir(perm os.FileMode) error {
+	return p.Fs().Mkdir(p.Path(), perm)
+}
+
+// MkdirAll makes all of the directories up to, and including, the given path.
+func (p *Path) MkdirAll(perm os.FileMode) error {
+	return p.Fs().MkdirAll(p.Path(), perm)
+}
+
+// Open opens a file, returning it or an error, if any happens.
+func (p *Path) Open() (afero.File, error) {
+	return p.Fs().Open(p.Path())
+}
+
+// OpenFile opens a file using the given flags and the given mode.
+func (p *Path) OpenFile(flag int, perm os.FileMode) (afero.File, error) {
+	return p.Fs().OpenFile(p.Path(), flag, perm)
+}
+
+// Remove removes a file, returning an error, if any
+// happens.
+func (p *Path) Remove() error {
+	return p.Fs().Remove(p.Path())
+}
+
+// RemoveAll removes the given path and all of its children.
+func (p *Path) RemoveAll() error {
+	return p.Fs().RemoveAll(p.Path())
+}
+
+// Rename renames a file
+func (p *Path) Rename(newname string) error {
+	if err := p.Fs().Rename(p.Path(), newname); err != nil {
+		return err
+	}
+
+	// Rename succeeded. Set our path to the newname.
+	p.path = newname
+	return nil
+}
+
+// RenamePath is the same as Rename except the argument is a Path object. The attributes
+// of the path object is retained and does not inherit anything from target.
+func (p *Path) RenamePath(target *Path) error {
+	return p.Rename(target.Path())
+}
+
+// Stat returns the os.FileInfo of the given path
+func (p *Path) Stat() (os.FileInfo, error) {
+	return p.Fs().Stat(p.Path())
+}
+
+// Chmod changes the file mode of the given path
+func (p *Path) Chmod(mode os.FileMode) error {
+	return p.Fs().Chmod(p.Path(), mode)
+}
+
+// Chtimes changes the modification and access time of the given path.
+func (p *Path) Chtimes(atime time.Time, mtime time.Time) error {
+	return p.Fs().Chtimes(p.Path(), atime, mtime)
+}
+
+// ************************
+// * afero.Afero wrappers *
+// ************************
+
+// DirExists returns whether or not the path represents a directory that exists
+func (p *Path) DirExists() (bool, error) {
+	return afero.DirExists(p.Fs(), p.Path())
+}
+
+// Exists returns whether the path exists
+func (p *Path) Exists() (bool, error) {
+	return afero.Exists(p.Fs(), p.Path())
+}
+
+// FileContainsAnyBytes returns whether or not the path contains
+// any of the listed bytes.
+func (p *Path) FileContainsAnyBytes(subslices [][]byte) (bool, error) {
+	return afero.FileContainsAnyBytes(p.Fs(), p.Path(), subslices)
+}
+
+// FileContainsBytes returns whether or not the given file contains the bytes
+func (p *Path) FileContainsBytes(subslice []byte) (bool, error) {
+	return afero.FileContainsBytes(p.Fs(), p.Path(), subslice)
+}
+
+// IsDir checks if a given path is a directory.
+func (p *Path) IsDir() (bool, error) {
+	return afero.IsDir(p.Fs(), p.Path())
+}
+
+// IsEmpty checks if a given file or directory is empty.
+func (p *Path) IsEmpty() (bool, error) {
+	return afero.IsEmpty(p.Fs(), p.Path())
+}
+
+// ReadDir reads the current path and returns a list of the corresponding
+// Path objects.
+func (p *Path) ReadDir() ([]*Path, error) {
+	var paths []*Path
+	fileInfos, err := afero.ReadDir(p.Fs(), p.Path())
+	for _, fileInfo := range fileInfos {
+		paths = append(paths, p.Join(fileInfo.Name()))
+	}
+	return paths, err
+}
+
+// ReadFile reads the given path and returns the data. If the file doesn't exist
+// or is a directory, an error is returned.
+func (p *Path) ReadFile() ([]byte, error) {
+	return afero.ReadFile(p.Fs(), p.Path())
+}
+
+// SafeWriteReader is the same as WriteReader but checks to see if file/directory already exists.
+func (p *Path) SafeWriteReader(r io.Reader) error {
+	return afero.SafeWriteReader(p.Fs(), p.Path(), r)
+}
+
+// Walk walks path, using the given filepath.WalkFunc to handle each
+func (p *Path) Walk(walkFn filepath.WalkFunc) error {
+	return afero.Walk(p.Fs(), p.Path(), walkFn)
+}
+
+// WriteFile writes the given data to the path (if possible). If the file exists,
+// the file is truncated. If the file is a directory, or the path doesn't exist,
+// an error is returned.
+func (p *Path) WriteFile(data []byte, perm os.FileMode) error {
+	return afero.WriteFile(p.Fs(), p.Path(), data, perm)
+}
+
+// WriteReader takes a reader and writes the content
+func (p *Path) WriteReader(r io.Reader) error {
+	return afero.WriteReader(p.Fs(), p.Path(), r)
+}
+
+// *************************************
+// * pathlib.Path-like implementations *
+// *************************************
+
+// Name returns the string representing the final path component
+func (p *Path) Name() string {
+	return filepath.Base(p.path)
+}
+
+// Parent returns the Path object of the parent directory
+func (p *Path) Parent() *Path {
+	return NewPathAfero(filepath.Dir(p.Path()), p.Fs())
 }
 
 // Resolve resolves the path to a real path
 func (p *Path) Resolve() (*Path, error) {
-	linkReader, ok := p.afero.Fs.(afero.LinkReader)
+	linkReader, ok := p.Fs().(afero.LinkReader)
 	if !ok {
 		return nil, p.doesNotImplementErr("afero.LinkReader")
 	}
 
 	resolvedPathStr, err := linkReader.ReadlinkIfPossible(p.path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to readlink")
+		return nil, err
 	}
-	return NewPathAfero(resolvedPathStr, p.afero.Fs), nil
-}
-
-// Symlink symlinks to the target location
-func (p *Path) Symlink(target *Path) error {
-	symlinker, ok := p.afero.Fs.(afero.Linker)
-	if !ok {
-		return p.doesNotImplementErr("afero.Linker")
-	}
-
-	return errors.Wrapf(symlinker.SymlinkIfPossible(target.path, p.path), "failed to symlink %s to %s", p.path, target.path)
+	return NewPathAfero(resolvedPathStr, p.fs), nil
 }
 
 // IsAbsolute returns whether or not the path is an absolute path. This is
 // determined by checking if the path starts with a slash.
 func (p *Path) IsAbsolute() bool {
 	return strings.HasPrefix(p.path, "/")
-}
-
-// Name returns the string representing the final path component
-func (p *Path) Name() string {
-	return filepath.Base(p.path)
 }
 
 // Join joins the current object's path with the given elements and returns
@@ -106,152 +258,94 @@ func (p *Path) Join(elems ...string) *Path {
 	for _, path := range elems {
 		paths = append(paths, path)
 	}
-	return NewPathAfero(filepath.Join(paths...), p.afero.Fs)
+	return NewPathAfero(filepath.Join(paths...), p.fs)
 }
 
-// WriteFile writes the given data to the path (if possible). If the file exists,
-// the file is truncated. If the file is a directory, or the path doesn't exist,
-// an error is returned.
-func (p *Path) WriteFile(data []byte, perm os.FileMode) error {
-	return errors.Wrapf(p.afero.WriteFile(p.Path(), data, perm), "Failed to write file")
-}
-
-// ReadFile reads the given path and returns the data. If the file doesn't exist
-// or is a directory, an error is returned.
-func (p *Path) ReadFile() ([]byte, error) {
-	bytes, err := p.afero.ReadFile(p.Path())
-	return bytes, errors.Wrapf(err, "failed to read file")
-}
-
-// ReadDir reads the current path and returns a list of the corresponding
-// Path objects.
-func (p *Path) ReadDir() ([]*Path, error) {
-	var paths []*Path
-	fileInfos, err := p.afero.ReadDir(p.Path())
-	for _, fileInfo := range fileInfos {
-		paths = append(paths, p.Join(fileInfo.Name()))
+func normalizePathString(path string) string {
+	path = strings.TrimSpace(path)
+	path = strings.TrimPrefix(path, "./")
+	path = strings.TrimRight(path, " ")
+	if len(path) > 1 {
+		path = strings.TrimSuffix(path, "/")
 	}
-	return paths, errors.Wrapf(err, "failed to read directory")
+	return path
 }
 
-// chmoder should really be part of afero. TODO: Send a PR to upstream
-type chmoder interface {
-	Chmod(name string, mode os.FileMode) error
+func normalizePathParts(path []string) []string {
+	// We might encounter cases where path represents a split of the path
+	// "///" etc. We will get a bunch of erroneous empty strings in such a split,
+	// so remove all of the trailing empty strings except for the first one (if any)
+	for i := len(path) - 1; i > 0; i-- {
+		if path[i] == "" {
+			path = path[0:i]
+		} else {
+			break
+		}
+	}
+	return path
 }
 
-// Chmod changes the file mode of the given path
-func (p *Path) Chmod(mode os.FileMode) error {
-	chmodCaller, ok := p.afero.Fs.(chmoder)
+// RelativeTo computes a relative version of path to the other path. For instance,
+// if the object is /path/to/foo.txt and you provide /path/ as the argment, the
+// returned Path object will represent to/foo.txt.
+func (p *Path) RelativeTo(other *Path) (*Path, error) {
+	thisPath := normalizePathString(p.Path())
+	otherPath := normalizePathString(other.Path())
+
+	thisParts := normalizePathParts(strings.Split(thisPath, string(filepath.Separator)))
+	otherParts := normalizePathParts(strings.Split(otherPath, string(filepath.Separator)))
+
+	relativePath := []string{}
+	var relativeBase int
+	for idx, part := range otherParts {
+		if thisParts[idx] != part {
+			return p, errors.Errorf("%s does not start with %s", p.path, otherPath)
+		}
+		relativeBase = idx
+	}
+
+	relativePath = thisParts[relativeBase+1:]
+
+	if len(relativePath) == 0 || (len(relativePath) == 1 && relativePath[0] == "") {
+		relativePath = []string{"."}
+	}
+
+	return NewPathAfero(strings.Join(relativePath, "/"), p.Fs()), nil
+}
+
+// *********************************
+// * filesystem-specific functions *
+// *********************************
+
+// Symlink symlinks to the target location. This will fail if the underlying
+// afero filesystem does not implement afero.Linker.
+func (p *Path) Symlink(target *Path) error {
+	symlinker, ok := p.fs.(afero.Linker)
 	if !ok {
-		return p.doesNotImplementErr("Chmod")
+		return p.doesNotImplementErr("afero.Linker")
 	}
 
-	return errors.Wrapf(chmodCaller.Chmod(p.path, mode), "Failed to chmod")
+	return symlinker.SymlinkIfPossible(target.path, p.path)
 }
 
-type mkdir interface {
-	Mkdir(name string, perm os.FileMode) error
-}
-
-// Mkdir makes the current dir. If the parents don't exist, an error
-// is returned.
-func (p *Path) Mkdir(perm os.FileMode) error {
-	mkdirCaller, ok := p.afero.Fs.(mkdir)
-	if !ok {
-		return p.doesNotImplementErr("Mkdir")
-	}
-	return errors.Wrapf(mkdirCaller.Mkdir(p.path, perm), "failed to Mkdir")
-}
-
-type mkdirAll interface {
-	MkdirAll(name string, perm os.FileMode) error
-}
-
-// MkdirAll makes all of the directories up to, and including, the given path.
-func (p *Path) MkdirAll(perm os.FileMode) error {
-	mkdirCaller, ok := p.afero.Fs.(mkdirAll)
-	if !ok {
-		return p.doesNotImplementErr("MkdirAll")
-	}
-	return errors.Wrapf(mkdirCaller.MkdirAll(p.path, perm), "failed to Mkdir")
-}
-
-type rename interface {
-	Rename(oldname, newname string) error
-}
-
-// Rename this path to the given target and return the corresponding
-// Path object.
-func (p *Path) Rename(target string) (*Path, error) {
-	renameCaller, ok := p.afero.Fs.(rename)
-	if !ok {
-		return nil, p.doesNotImplementErr("Rename")
-	}
-
-	err := errors.Wrapf(renameCaller.Rename(p.path, target), "failed to rename")
-	if err != nil {
-		return nil, err
-	}
-	return NewPathAfero(target, p.afero.Fs), nil
-}
-
-// RenamePath is the same as Rename except target is a Path object
-func (p *Path) RenamePath(target *Path) (*Path, error) {
-	return p.Rename(target.path)
-}
-
-type remover interface {
-	Remove(name string) error
-}
-
-// Remove deletes/unlinks/destroys the given path
-func (p *Path) Remove() error {
-	removeCaller, ok := p.afero.Fs.(remover)
-	if !ok {
-		return p.doesNotImplementErr("Remove")
-	}
-
-	return errors.Wrapf(removeCaller.Remove(p.path), "failed to remove")
-}
-
-type removeAll interface {
-	RemoveAll(name string) error
-}
-
-// RemoveAll removes the given path and all of its children.
-func (p *Path) RemoveAll() error {
-	removeAllCaller, ok := p.afero.Fs.(removeAll)
-	if !ok {
-		return p.doesNotImplementErr("RemoveAll")
-	}
-
-	return errors.Wrapf(removeAllCaller.RemoveAll(p.path), "failed to remove all")
-}
-
-// Exists returns whether the path exists
-func (p *Path) Exists() (bool, error) {
-	return p.afero.Exists(p.path)
-}
-
-// IsDir returns whether the path is a directory
-func (p *Path) IsDir() (bool, error) {
-	return p.afero.IsDir(p.path)
-}
+// ****************************************
+// * chigopher/pathlib-specific functions *
+// ****************************************
 
 // IsFile returns true if the given path is a file.
 func (p *Path) IsFile() (bool, error) {
-	fileInfo, err := p.afero.Stat(p.path)
+	fileInfo, err := p.Fs().Stat(p.Path())
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to stat")
+		return false, err
 	}
 	return fileInfo.Mode().IsRegular(), nil
 }
 
 // IsSymlink returns true if the given path is a symlink.
 func (p *Path) IsSymlink() (bool, error) {
-	fileInfo, err := p.afero.Stat(p.path)
+	fileInfo, err := p.Fs().Stat(p.Path())
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to stat")
+		return false, err
 	}
 
 	isSymlink := false
@@ -259,16 +353,6 @@ func (p *Path) IsSymlink() (bool, error) {
 		isSymlink = true
 	}
 	return isSymlink, nil
-}
-
-// Stat returns the os.FileInfo of the given path
-func (p *Path) Stat() (os.FileInfo, error) {
-	return p.afero.Stat(p.path)
-}
-
-// Parent returns the Path object of the parent directory
-func (p *Path) Parent() *Path {
-	return NewPathAfero(filepath.Dir(p.path), p.afero.Fs)
 }
 
 // Path returns the string representation of the path
@@ -289,50 +373,6 @@ func (p *Path) Equals(other *Path) (bool, error) {
 	}
 
 	return selfResolved.Path() == otherResolved.Path(), nil
-}
-
-// RelativeTo computes a relative version of path to the other path. For instance,
-// if the object is /path/to/foo.txt and you provide /path/ as the argment, the
-// returned Path object will represent to/foo.txt.
-func (p *Path) RelativeTo(other *Path) (*Path, error) {
-	thisParts := strings.Split(p.path, "/")
-	// Normalize
-	if thisParts[len(thisParts)-1] == "" {
-		thisParts = thisParts[:len(thisParts)-1]
-	}
-	if thisParts[0] == "." {
-		thisParts = thisParts[1:]
-	}
-
-	otherParts := strings.Split(other.path, "/")
-	// Normalize
-	if len(otherParts) > 1 && otherParts[len(otherParts)-1] == "" {
-		otherParts = otherParts[:len(otherParts)-1]
-	}
-	if otherParts[0] == "." {
-		otherParts = otherParts[1:]
-	}
-
-	if !strings.HasPrefix(p.path, other.path) {
-		errors.Errorf("%s does not start with %s", p.path, other.path)
-	}
-
-	relativePath := []string{}
-	var relativeBase int
-	for idx, part := range otherParts {
-		if thisParts[idx] != part {
-			return nil, errors.Errorf("%s does not start with %s", p.path, strings.Join(otherParts[:idx], "/"))
-		}
-		relativeBase = idx
-	}
-
-	relativePath = thisParts[relativeBase+1:]
-
-	if len(relativePath) == 0 || (len(relativePath) == 1 && relativePath[0] == "") {
-		relativePath = []string{"."}
-	}
-
-	return NewPathAfero(strings.Join(relativePath, "/"), p.afero.Fs), nil
 }
 
 // GetLatest returns the file or directory that has the most recent mtime. Only
@@ -372,12 +412,7 @@ func (p *Path) GetLatest() (*Path, error) {
 
 // Glob returns all matches of pattern relative to this object's path.
 func (p *Path) Glob(pattern string) ([]*Path, error) {
-	return Glob(p.afero.Fs, p.Join(pattern).Path())
-}
-
-// Chtimes changes the modification and access time of the given path.
-func (p *Path) Chtimes(atime time.Time, mtime time.Time) error {
-	return p.afero.Chtimes(p.Path(), atime, mtime)
+	return Glob(p.Fs(), p.Join(pattern).Path())
 }
 
 // Mtime returns the modification time of the given path.
