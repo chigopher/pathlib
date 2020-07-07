@@ -9,6 +9,22 @@ Inspired by Python's pathlib, made better by Golang.
 
 `pathlib` is currently in the alpha stage of development, meaning the API is subject to change. However, the current state of the project is already proving to be highly useful.
 
+Table of Contents
+-----------------
+
+
+* [Examples](#examples)
+  * [OsFs](#osfs)
+  * [In\-memory FS](#in-memory-fs)
+* [Design Philosophy](#design-philosophy)
+* [Frequently Asked Questions](#frequently-asked-questions)
+  * [Why pathlib and not filepath?](#why-pathlib-and-not-filepath)
+  * [Why not use afero directly?](#why-not-use-afero-directly)
+  * [Does this provide any benefit to my unit tests?](#does-this-provide-any-benefit-to-my-unit-tests)
+  * [What filesystems does this support?](#what-filesystems-does-this-support)
+
+
+
 Examples
 ---------
 
@@ -120,18 +136,18 @@ The design philosophy of this package is to be as thin of a layer as possible to
 Frequently Asked Questions
 --------------------------
 
-#### Why `pathlib` and not [`filepath`](https://golang.org/pkg/path/filepath/)?
+### Why `pathlib` and not [`filepath`](https://golang.org/pkg/path/filepath/)?
 
 [`filepath`](https://golang.org/pkg/path/filepath/) is a package that is tightly coupled to the OS filesystem APIs and also is not written in an object-oriented way. `pathlib` uses [`afero`](https://github.com/spf13/afero) under the hood for its abstracted filesystem interface, which allows you to represent a vast array of different filesystems (e.g. SFTP, HTTP, in-memory, and of course OS filesystems) using the same `Path` object.
 
-#### Why not use `afero` directly? 
+### Why not use `afero` directly? 
 
 You certainly could, however `afero` does not represent a _filesystem object_ in an object-oriented way. It is only object-oriented with respect to the filesystem itself. `pathlib` is simply a thin layer on top of `afero` that provides the filesystem-object-orientation.
 
-#### Does this provide any benefit to my unit tests?
+### Does this provide any benefit to my unit tests?
 
 Most certainly! `pathlib` allows you to create [in-memory filesystems](#in-memory-fs), which have the nice property of being automatically garbage collected by Golang's GC when they go out of scope. You don't have to worry about defering any `Remove()` functions or setting up temporary dirs in `/tmp`. Just instantiate a `MemMapFs` and you're good to go!
 
-#### What filesystems does this support?
+### What filesystems does this support?
 
 Currently only POSIX-style paths are supported.
