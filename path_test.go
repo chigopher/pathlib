@@ -1,7 +1,9 @@
 package pathlib
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -21,6 +23,9 @@ type PathSuite struct {
 }
 
 func (p *PathSuite) SetupTest() {
+	// We actually can't use the MemMapFs because some of the tests
+	// are testing symlink behavior. We might want to split these
+	// tests out to use MemMapFs when possible.
 	tmpdir, err := ioutil.TempDir("", "")
 	require.NoError(p.T(), err)
 	p.tmpdir = NewPath(tmpdir)
@@ -148,6 +153,81 @@ func (p *PathSuite) TestGetLatestEmpty() {
 	latest, err := p.tmpdir.GetLatest()
 	require.NoError(p.T(), err)
 	assert.Nil(p.T(), latest)
+}
+
+func (p *PathSuite) TestOpen() {
+	msg := "cubs > cardinals"
+	file := p.tmpdir.Join("file.txt")
+	require.NoError(p.T(), file.WriteFile([]byte(msg), 0o644))
+	fileHandle, err := file.Open()
+	require.NoError(p.T(), err)
+
+	readBytes := make([]byte, len(msg)+5)
+	n, err := fileHandle.Read(readBytes)
+	p.Equal(len(msg), n)
+	p.Equal(msg, string(readBytes[0:n]))
+}
+
+func (p *PathSuite) TestOpenFile() {
+	file := p.tmpdir.Join("file.txt")
+	fileHandle, err := file.OpenFile(os.O_RDWR|os.O_CREATE, 0o644)
+	require.NoError(p.T(), err)
+
+	msg := "do you play croquet?"
+	n, err := fileHandle.WriteString(msg)
+	p.Equal(len(msg), n)
+	p.NoError(err)
+
+	bytes := make([]byte, len(msg)+5)
+	n, err = fileHandle.ReadAt(bytes, 0)
+	p.Equal(len(msg), n)
+	p.True(errors.Is(err, io.EOF))
+	p.Equal(msg, string(bytes[0:n]))
+}
+
+func (p *PathSuite) TestDirExists() {
+	dir1 := p.tmpdir.Join("subdir")
+	exists, err := dir1.DirExists()
+	require.NoError(p.T(), err)
+	p.False(exists)
+
+	require.NoError(p.T(), dir1.Mkdir(0o755))
+	exists, err = dir1.DirExists()
+	require.NoError(p.T(), err)
+	p.True(exists)
+}
+
+func (p *PathSuite) TestIsFile() {
+	file1 := p.tmpdir.Join("file.txt")
+
+	require.NoError(p.T(), file1.WriteFile([]byte(""), 0o644))
+	exists, err := file1.IsFile()
+	require.NoError(p.T(), err)
+	p.True(exists)
+}
+
+func (p *PathSuite) TestIsEmpty() {
+	file1 := p.tmpdir.Join("file.txt")
+
+	require.NoError(p.T(), file1.WriteFile([]byte(""), 0o644))
+	isEmpty, err := file1.IsEmpty()
+	require.NoError(p.T(), err)
+	p.True(isEmpty)
+}
+
+func (p *PathSuite) TestIsSymlink() {
+	file1 := p.tmpdir.Join("file.txt")
+	require.NoError(p.T(), file1.WriteFile([]byte(""), 0o644))
+
+	symlink := p.tmpdir.Join("symlink")
+	p.NoError(symlink.Symlink(file1))
+	isSymlink, err := symlink.IsSymlink()
+	require.NoError(p.T(), err)
+	p.True(isSymlink)
+
+	stat, _ := symlink.Stat()
+	p.T().Logf("%v", stat.Mode())
+	p.T().Logf(symlink.Path())
 }
 
 func TestPathSuite(t *testing.T) {
