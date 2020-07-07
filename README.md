@@ -131,3 +131,7 @@ You certainly could, however `afero` does not represent a _filesystem object_ in
 #### Does this provide any benefit to my unit tests?
 
 Most certainly! `pathlib` allows you to create [in-memory filesystems](#in-memory-fs), which have the nice property of being automatically garbage collected by Golang's GC when they go out of scope. You don't have to worry about defering any `Remove()` functions or setting up temporary dirs in `/tmp`. Just instantiate a `MemMapFs` and you're good to go!
+
+#### What filesystems does this support?
+
+Currently only POSIX-style paths are supported.
