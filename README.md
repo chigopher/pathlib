@@ -141,7 +141,7 @@ The API of `filepath.Path` can be grouped into a few main categories:
 
 ### `filepath.File`
 
-`filepath.File` is intended to be a thin wrapper around [`afero.File`](https://pkg.go.dev/github.com/spf13/afero?tab=doc#File). We avoid simply returning this interface on calls to `Open()` and `OpenFile()` (etc) because we want the ability to extend our API beyond what `afero` provides. So, we create our own `File` object which embeds `afero.File`, but might possibly contain further functionality to enhance the API functionality.
+`filepath.File` is intended to be a thin wrapper around [`afero.File`](https://pkg.go.dev/github.com/spf13/afero?tab=doc#File). We avoid simply returning this interface on calls to `Open()` and `OpenFile()` (etc) because we want the ability to extend our API beyond what `afero` provides. So, we create our own `File` object which embeds `afero.File`, but might possibly contain further functionality.
 
 Frequently Asked Questions
 --------------------------
