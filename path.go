@@ -90,14 +90,21 @@ func (p *Path) MkdirAll(perm os.FileMode) error {
 	return p.Fs().MkdirAll(p.Path(), perm)
 }
 
-// Open opens a file, returning it or an error, if any happens.
-func (p *Path) Open() (afero.File, error) {
-	return p.Fs().Open(p.Path())
+// Open opens a file for read-only, returning it or an error, if any happens.
+func (p *Path) Open() (*File, error) {
+	handle, err := p.Fs().Open(p.Path())
+	return &File{
+		File: handle,
+	}, err
 }
 
 // OpenFile opens a file using the given flags and the given mode.
-func (p *Path) OpenFile(flag int, perm os.FileMode) (afero.File, error) {
-	return p.Fs().OpenFile(p.Path(), flag, perm)
+// See the list of flags at: https://golang.org/pkg/os/#pkg-constants
+func (p *Path) OpenFile(flag int, perm os.FileMode) (*File, error) {
+	handle, err := p.Fs().OpenFile(p.Path(), flag, perm)
+	return &File{
+		File: handle,
+	}, err
 }
 
 // Remove removes a file, returning an error, if any
@@ -342,9 +349,16 @@ func (p *Path) IsFile() (bool, error) {
 }
 
 // IsSymlink returns true if the given path is a symlink.
+// Fails if the filesystem doesn't implement afero.Lstater.
 func (p *Path) IsSymlink() (bool, error) {
-	fileInfo, err := p.Fs().Stat(p.Path())
-	if err != nil {
+	lStater, ok := p.Fs().(afero.Lstater)
+	if !ok {
+		return false, p.doesNotImplementErr("afero.Lstater")
+	}
+	fileInfo, lstatCalled, err := lStater.LstatIfPossible(p.Path())
+	if err != nil || !lstatCalled {
+		// If lstat wasn't called then the filesystem doesn't implement it.
+		// Thus, it isn't a symlink
 		return false, err
 	}
 
