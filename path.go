@@ -19,6 +19,9 @@ type Path struct {
 	// DefaultFileMode is the mode that is used when creating new files in functions
 	// that do not accept os.FileMode as a parameter.
 	DefaultFileMode os.FileMode
+	// Sep is the seperator used in path calculations. By default this is set to
+	// os.PathSeparator.
+	Sep string
 }
 
 // NewPath returns a new OS path
@@ -32,6 +35,7 @@ func NewPathAfero(path string, fs afero.Fs) *Path {
 		path:            path,
 		fs:              fs,
 		DefaultFileMode: 0o644,
+		Sep:             string(os.PathSeparator),
 	}
 }
 
@@ -238,7 +242,11 @@ func (p *Path) Parent() *Path {
 	return NewPathAfero(filepath.Dir(p.Path()), p.Fs())
 }
 
-// Resolve resolves the path to a real path
+// Resolve resolves the path to the location pointed to by the symlink,
+// if any. Note that if your path is serviced by multiple symlinks,
+// the result of Resolve() may not point to any real path.
+// This will fail if the underlying afero filesystem does not implement
+// afero.LinkReader.
 func (p *Path) Resolve() (*Path, error) {
 	linkReader, ok := p.Fs().(afero.LinkReader)
 	if !ok {
@@ -250,6 +258,69 @@ func (p *Path) Resolve() (*Path, error) {
 		return nil, err
 	}
 	return NewPathAfero(resolvedPathStr, p.fs), nil
+}
+
+func resolveIfSymlink(path *Path) (*Path, bool, error) {
+	isSymlink, err := path.IsSymlink()
+	if err != nil {
+		return path, isSymlink, err
+	}
+	if isSymlink {
+		resolvedPath, err := path.Resolve()
+		if err != nil {
+			// Return the path unchanged on errors
+			return path, isSymlink, err
+		}
+		return resolvedPath, isSymlink, nil
+	}
+	return path, isSymlink, nil
+}
+
+func resolveAllHelper(path *Path) (*Path, error) {
+	parts := path.Parts()
+
+	for i := 0; i < len(parts); i++ {
+		rightOfComponent := parts[i+1:]
+		upToComponent := parts[:i+1]
+
+		componentPath := NewPathAfero(strings.Join(upToComponent, path.Sep), path.Fs())
+		resolved, isSymlink, err := resolveIfSymlink(componentPath)
+		if err != nil {
+			return path, err
+		}
+
+		if isSymlink {
+			if resolved.IsAbsolute() {
+				return resolveAllHelper(resolved.Join(strings.Join(rightOfComponent, path.Sep)))
+			}
+			return resolveAllHelper(componentPath.Parent().JoinPath(resolved).Join(rightOfComponent...))
+		}
+	}
+
+	// If we get through the entire iteration above, that means no component was a symlink.
+	// Return the argument.
+	return path, nil
+}
+
+// ResolveAll canonicalizes the path by following every symlink in
+// every component of the given path recursively. The behavior
+// should be identical to the `readlink -f` command from POSIX OSs.
+// This will fail if the underlying afero filesystem does not implement
+// afero.LinkReader. The path will be returned unchanged on errors.
+// This function is not thread-safe.
+func (p *Path) ResolveAll() (*Path, error) {
+	return resolveAllHelper(p)
+}
+
+// Parts returns the individual components of a path
+func (p *Path) Parts() []string {
+	parts := []string{}
+	if p.IsAbsolute() {
+		parts = append(parts, p.Sep)
+	}
+	normalizedPathStr := normalizePathString(p.Path())
+	normalizedParts := normalizePathParts(strings.Split(normalizedPathStr, p.Sep))
+	return append(parts, normalizedParts...)
 }
 
 // IsAbsolute returns whether or not the path is an absolute path. This is
@@ -265,7 +336,12 @@ func (p *Path) Join(elems ...string) *Path {
 	for _, path := range elems {
 		paths = append(paths, path)
 	}
-	return NewPathAfero(filepath.Join(paths...), p.fs)
+	return NewPathAfero(filepath.Join(paths...), p.Fs())
+}
+
+// JoinPath is the same as Join() except it accepts a path object
+func (p *Path) JoinPath(path *Path) *Path {
+	return p.Join(path.Parts()...)
 }
 
 func normalizePathString(path string) string {
@@ -282,31 +358,31 @@ func normalizePathParts(path []string) []string {
 	// We might encounter cases where path represents a split of the path
 	// "///" etc. We will get a bunch of erroneous empty strings in such a split,
 	// so remove all of the trailing empty strings except for the first one (if any)
-	for i := len(path) - 1; i > 0; i-- {
-		if path[i] == "" {
-			path = path[0:i]
-		} else {
-			break
+	normalized := []string{}
+	for i := 0; i < len(path); i++ {
+		if path[i] != "" {
+			normalized = append(normalized, path[i])
 		}
 	}
-	return path
+	return normalized
 }
 
 // RelativeTo computes a relative version of path to the other path. For instance,
 // if the object is /path/to/foo.txt and you provide /path/ as the argment, the
 // returned Path object will represent to/foo.txt.
 func (p *Path) RelativeTo(other *Path) (*Path, error) {
-	thisPath := normalizePathString(p.Path())
-	otherPath := normalizePathString(other.Path())
 
-	thisParts := normalizePathParts(strings.Split(thisPath, string(filepath.Separator)))
-	otherParts := normalizePathParts(strings.Split(otherPath, string(filepath.Separator)))
+	thisPathNormalized := normalizePathString(p.Path())
+	otherPathNormalized := normalizePathString(other.Path())
+
+	thisParts := p.Parts()
+	otherParts := other.Parts()
 
 	relativePath := []string{}
 	var relativeBase int
 	for idx, part := range otherParts {
 		if thisParts[idx] != part {
-			return p, errors.Errorf("%s does not start with %s", p.path, otherPath)
+			return p, errors.Errorf("%s does not start with %s", thisPathNormalized, otherPathNormalized)
 		}
 		relativeBase = idx
 	}
@@ -338,6 +414,11 @@ func (p *Path) Symlink(target *Path) error {
 // ****************************************
 // * chigopher/pathlib-specific functions *
 // ****************************************
+
+// String returns the string representation of the path
+func (p *Path) String() string {
+	return p.Path()
+}
 
 // IsFile returns true if the given path is a file.
 func (p *Path) IsFile() (bool, error) {
@@ -377,11 +458,11 @@ func (p *Path) Path() string {
 // Equals returns whether or not the path pointed to by other
 // has the same resolved filepath as self.
 func (p *Path) Equals(other *Path) (bool, error) {
-	selfResolved, err := p.Resolve()
+	selfResolved, err := p.ResolveAll()
 	if err != nil {
 		return false, err
 	}
-	otherResolved, err := other.Resolve()
+	otherResolved, err := other.ResolveAll()
 	if err != nil {
 		return false, err
 	}
