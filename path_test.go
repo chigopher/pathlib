@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -230,6 +231,43 @@ func (p *PathSuite) TestIsSymlink() {
 	p.T().Logf(symlink.Path())
 }
 
+func (p *PathSuite) TestResolveAll() {
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll(0o755))
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll(0o755))
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks", "home").Symlink(NewPath("../data/users/home")))
+	require.NoError(p.T(), p.tmpdir.Join("home").Symlink(NewPath("./mnt/nfs/symlinks/home")))
+
+	resolved, err := p.tmpdir.Join("home/LandonTClipp").ResolveAll()
+	p.NoError(err)
+	resolvedParts := resolved.Parts()
+	p.Equal("mnt/nfs/data/users/home/LandonTClipp", strings.Join(resolvedParts[len(resolvedParts)-6:], resolved.Sep))
+}
+
+func (p *PathSuite) TestResolveAllAbsolute() {
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll(0o755))
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll(0o755))
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks", "home").Symlink(p.tmpdir.Join("mnt", "nfs", "data", "users", "home")))
+	require.NoError(p.T(), p.tmpdir.Join("home").Symlink(NewPath("./mnt/nfs/symlinks/home")))
+
+	resolved, err := p.tmpdir.Join("home", "LandonTClipp").ResolveAll()
+	p.NoError(err)
+	resolvedParts := resolved.Parts()
+	p.Equal(
+		strings.Join(
+			[]string{"mnt", "nfs", "data", "users", "home", "LandonTClipp"}, resolved.Sep,
+		),
+		strings.Join(resolvedParts[len(resolvedParts)-6:], resolved.Sep))
+}
+
+func (p *PathSuite) TestEquals() {
+	hello1 := p.tmpdir.Join("hello", "world")
+	require.NoError(p.T(), hello1.MkdirAll(0o755))
+	hello2 := p.tmpdir.Join("hello", "world")
+	require.NoError(p.T(), hello2.MkdirAll(0o755))
+
+	p.True(hello1.Equals(hello2))
+}
+
 func TestPathSuite(t *testing.T) {
 	suite.Run(t, new(PathSuite))
 }
@@ -339,7 +377,7 @@ func TestPathPosix_RelativeTo(t *testing.T) {
 		{"8", "/a/b/c/d/file.txt", "/a/b/c/d/", "file.txt", false},
 		{"9", "/cool/cats/write/cool/code/file.csv", "/cool/cats/write", "cool/code/file.csv", false},
 		{"10", "/etc/passwd", "////////////", "etc/passwd", false},
-		{"10", "/etc/passwd/////", "/", "etc/passwd", false},
+		{"11", "/etc/passwd/////", "/", "etc/passwd", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -354,5 +392,26 @@ func TestPathPosix_RelativeTo(t *testing.T) {
 			}
 		})
 		a = afero.NewMemMapFs()
+	}
+}
+
+func TestPath_Parts(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want []string
+	}{
+		{"0", "/path/to/thingy", []string{"/", "path", "to", "thingy"}},
+		{"1", "path/to/thingy", []string{"path", "to", "thingy"}},
+		{"2", "/", []string{"/"}},
+		{"3", "./path/to/thingy", []string{"path", "to", "thingy"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewPathAfero(tt.path, afero.NewMemMapFs())
+			if got := p.Parts(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Path.Parts() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
