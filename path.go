@@ -402,20 +402,16 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 
 // Lstat lstat's the path if the underlying afero filesystem supports it. If
 // the filesystem does not support afero.Lstater, an error will be returned.
-// A nil os.FileInfo is returned on errors.
-func (p *Path) Lstat() (os.FileInfo, error) {
+// A nil os.FileInfo is returned on errors. Also returned is a boolean describing
+// whether or not Lstat was called (in cases where the filesystem is an OS filesystem)
+// or not called (in cases where only Stat is supported). See
+// https://godoc.org/github.com/spf13/afero#Lstater for more info.
+func (p *Path) Lstat() (os.FileInfo, bool, error) {
 	lStater, ok := p.Fs().(afero.Lstater)
 	if !ok {
-		return nil, p.doesNotImplementErr("afero.Lstater")
+		return nil, false, p.doesNotImplementErr("afero.Lstater")
 	}
-	fileInfo, lstatCalled, err := lStater.LstatIfPossible(p.Path())
-	if err != nil || !lstatCalled {
-		// If lstat wasn't called then the filesystem doesn't implement it.
-		// Thus, it isn't a symlink
-		return nil, err
-	}
-
-	return fileInfo, nil
+	return lStater.LstatIfPossible(p.Path())
 }
 
 // *********************************
@@ -460,7 +456,7 @@ func IsFile(fileInfo os.FileInfo) (bool, error) {
 // IsSymlink returns true if the given path is a symlink.
 // Fails if the filesystem doesn't implement afero.Lstater.
 func (p *Path) IsSymlink() (bool, error) {
-	fileInfo, err := p.Lstat()
+	fileInfo, _, err := p.Lstat()
 	if err != nil {
 		return false, err
 	}
