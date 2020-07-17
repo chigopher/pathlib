@@ -545,3 +545,19 @@ func (p *Path) Mtime() (time.Time, error) {
 func Mtime(fileInfo os.FileInfo) (time.Time, error) {
 	return fileInfo.ModTime(), nil
 }
+
+// Size returns the size of the object. Fails if the object doesn't exist.
+func (p *Path) Size() (int64, error) {
+	stat, err := p.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return Size(stat), nil
+}
+
+// Size returns the size described by the os.FileInfo. Before you say anything,
+// yes... you could just do fileInfo.Size(). This is purely a convenience function
+// to create API consistency.
+func Size(fileInfo os.FileInfo) int64 {
+	return fileInfo.Size()
+}
