@@ -71,7 +71,11 @@ func (p *Path) Fs() afero.Fs {
 }
 
 func (p *Path) doesNotImplementErr(interfaceName string) error {
-	return errors.Wrapf(ErrDoesNotImplement, "Path's afero filesystem %s does not implement %s", getFsName(p.fs), interfaceName)
+	return doesNotImplementErr(interfaceName, p.Fs())
+}
+
+func doesNotImplementErr(interfaceName string, fs afero.Fs) error {
+	return errors.Wrapf(ErrDoesNotImplement, "Path's afero filesystem %s does not implement %s", getFsName(fs), interfaceName)
 }
 
 // *******************************
@@ -182,6 +186,12 @@ func (p *Path) FileContainsBytes(subslice []byte) (bool, error) {
 // IsDir checks if a given path is a directory.
 func (p *Path) IsDir() (bool, error) {
 	return afero.IsDir(p.Fs(), p.Path())
+}
+
+// IsDir returns whether or not the os.FileInfo object represents a
+// directory.
+func IsDir(fileInfo os.FileInfo) bool {
+	return fileInfo.IsDir()
 }
 
 // IsEmpty checks if a given file or directory is empty.
@@ -396,6 +406,20 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 	return NewPathAfero(strings.Join(relativePath, "/"), p.Fs()), nil
 }
 
+// Lstat lstat's the path if the underlying afero filesystem supports it. If
+// the filesystem does not support afero.Lstater, an error will be returned.
+// A nil os.FileInfo is returned on errors. Also returned is a boolean describing
+// whether or not Lstat was called (in cases where the filesystem is an OS filesystem)
+// or not called (in cases where only Stat is supported). See
+// https://godoc.org/github.com/spf13/afero#Lstater for more info.
+func (p *Path) Lstat() (os.FileInfo, bool, error) {
+	lStater, ok := p.Fs().(afero.Lstater)
+	if !ok {
+		return nil, false, p.doesNotImplementErr("afero.Lstater")
+	}
+	return lStater.LstatIfPossible(p.Path())
+}
+
 // *********************************
 // * filesystem-specific functions *
 // *********************************
@@ -422,32 +446,36 @@ func (p *Path) String() string {
 
 // IsFile returns true if the given path is a file.
 func (p *Path) IsFile() (bool, error) {
-	fileInfo, err := p.Fs().Stat(p.Path())
+	fileInfo, err := p.Stat()
 	if err != nil {
 		return false, err
 	}
+	return IsFile(fileInfo)
+}
+
+// IsFile returns whether or not the file described by the given
+// os.FileInfo is a regular file.
+func IsFile(fileInfo os.FileInfo) (bool, error) {
 	return fileInfo.Mode().IsRegular(), nil
 }
 
 // IsSymlink returns true if the given path is a symlink.
 // Fails if the filesystem doesn't implement afero.Lstater.
 func (p *Path) IsSymlink() (bool, error) {
-	lStater, ok := p.Fs().(afero.Lstater)
-	if !ok {
-		return false, p.doesNotImplementErr("afero.Lstater")
-	}
-	fileInfo, lstatCalled, err := lStater.LstatIfPossible(p.Path())
-	if err != nil || !lstatCalled {
-		// If lstat wasn't called then the filesystem doesn't implement it.
-		// Thus, it isn't a symlink
+	fileInfo, _, err := p.Lstat()
+	if err != nil {
 		return false, err
 	}
+	return IsSymlink(fileInfo)
+}
 
-	isSymlink := false
+// IsSymlink returns true if the file described by the given
+// os.FileInfo describes a symlink.
+func IsSymlink(fileInfo os.FileInfo) (bool, error) {
 	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		isSymlink = true
+		return true, nil
 	}
-	return isSymlink, nil
+	return false, nil
 }
 
 // Path returns the string representation of the path
@@ -516,5 +544,26 @@ func (p *Path) Mtime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	return stat.ModTime(), nil
+	return Mtime(stat)
+}
+
+// Mtime returns the mtime described in the given os.FileInfo object
+func Mtime(fileInfo os.FileInfo) (time.Time, error) {
+	return fileInfo.ModTime(), nil
+}
+
+// Size returns the size of the object. Fails if the object doesn't exist.
+func (p *Path) Size() (int64, error) {
+	stat, err := p.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return Size(stat), nil
+}
+
+// Size returns the size described by the os.FileInfo. Before you say anything,
+// yes... you could just do fileInfo.Size(). This is purely a convenience function
+// to create API consistency.
+func Size(fileInfo os.FileInfo) int64 {
+	return fileInfo.Size()
 }

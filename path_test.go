@@ -135,6 +135,39 @@ func (p *PathSuite) TestRenamePath() {
 	assert.False(p.T(), oldFileExists)
 }
 
+func (p *PathSuite) TestSizeZero() {
+	file := p.tmpdir.Join("file.txt")
+	require.NoError(p.T(), file.WriteFile([]byte{}, 0o644))
+	size, err := file.Size()
+	require.NoError(p.T(), err)
+	p.Zero(size)
+}
+
+func (p *PathSuite) TestSizeNonZero() {
+	msg := "oh, it's you"
+	file := p.tmpdir.Join("file.txt")
+	require.NoError(p.T(), file.WriteFile([]byte(msg), 0o644))
+	size, err := file.Size()
+	require.NoError(p.T(), err)
+	p.Equal(len(msg), int(size))
+}
+
+func (p *PathSuite) TestIsDir() {
+	dir := p.tmpdir.Join("dir")
+	require.NoError(p.T(), dir.Mkdir(0o755))
+	isDir, err := dir.IsDir()
+	require.NoError(p.T(), err)
+	p.True(isDir)
+}
+
+func (p *PathSuite) TestIsntDir() {
+	file := p.tmpdir.Join("file.txt")
+	require.NoError(p.T(), file.WriteFile([]byte("hello world!"), 0o644))
+	isDir, err := file.IsDir()
+	require.NoError(p.T(), err)
+	p.False(isDir)
+}
+
 func (p *PathSuite) TestGetLatest() {
 	now := time.Now()
 	for i := 0; i < 5; i++ {
