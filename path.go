@@ -188,6 +188,12 @@ func (p *Path) IsDir() (bool, error) {
 	return afero.IsDir(p.Fs(), p.Path())
 }
 
+// IsDir returns whether or not the os.FileInfo object represents a
+// directory.
+func IsDir(fileInfo os.FileInfo) bool {
+	return fileInfo.IsDir()
+}
+
 // IsEmpty checks if a given file or directory is empty.
 func (p *Path) IsEmpty() (bool, error) {
 	return afero.IsEmpty(p.Fs(), p.Path())
