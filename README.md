@@ -143,6 +143,14 @@ The API of `filepath.Path` can be grouped into a few main categories:
 
 `filepath.File` is intended to be a thin wrapper around [`afero.File`](https://pkg.go.dev/github.com/spf13/afero?tab=doc#File). We avoid simply returning this interface on calls to `Open()` and `OpenFile()` (etc) because we want the ability to extend our API beyond what `afero` provides. So, we create our own `File` object which embeds `afero.File`, but might possibly contain further functionality.
 
+### Whoa whoa whoa, what is this afero nonsense?
+
+[`github.com/spf13/afero`](https://github.com/spf13/afero) is a package that provides an abstracted interface to the underlying filesystem API calls. `pathlib` uses this package for operating on the abstracted filesystem. This is powerful because it allows you to to use essentially any kind of filesystem that you want. Additionally, afero is a first-class-citizen in `pathlib` meaning that you can implement and explicitly provide your own afero object. 
+
+The basic diagram looks like this:
+
+![Pathlib Diagram](https://github.com/chigopher/pathlib/blob/master/docs/pathlib-diagram.png)
+
 Frequently Asked Questions
 --------------------------
 
