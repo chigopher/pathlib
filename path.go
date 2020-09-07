@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/LandonTClipp/afero"
+	"github.com/pkg/errors"
 )
 
 // Path is an object that represents a path
@@ -83,8 +83,9 @@ func doesNotImplementErr(interfaceName string, fs afero.Fs) error {
 // *******************************
 
 // Create creates a file if possible, returning the file and an error, if any happens.
-func (p *Path) Create() (afero.File, error) {
-	return p.Fs().Create(p.Path())
+func (p *Path) Create() (File, error) {
+	file, err := p.Fs().Create(p.Path())
+	return File{file}, err
 }
 
 // Mkdir makes the current dir. If the parents don't exist, an error
@@ -200,12 +201,22 @@ func (p *Path) IsEmpty() (bool, error) {
 }
 
 // ReadDir reads the current path and returns a list of the corresponding
-// Path objects.
+// Path objects. This function differs from os.Readdir in that it does
+// not call Stat() on the files. Instead, it calls Readdirnames which
+// is less expensive and does not force the caller to make expensive
+// Stat calls.
 func (p *Path) ReadDir() ([]*Path, error) {
 	var paths []*Path
-	fileInfos, err := afero.ReadDir(p.Fs(), p.Path())
-	for _, fileInfo := range fileInfos {
-		paths = append(paths, p.Join(fileInfo.Name()))
+	handle, err := p.Open()
+	if err != nil {
+		return paths, err
+	}
+	children, err := handle.Readdirnames(-1)
+	if err != nil {
+		return paths, err
+	}
+	for _, child := range children {
+		paths = append(paths, p.Join(child))
 	}
 	return paths, err
 }

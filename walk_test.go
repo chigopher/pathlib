@@ -11,44 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// ***********************
-// * FILESYSTEM FIXTURES *
-// ***********************
-// The following functions provide different "scenarios"
-// that you might encounter in a filesystem tree.
-
-func HelloWorld(root *Path) error {
-	hello := root.Join("hello.txt")
-	return hello.WriteFile([]byte("hello world"), 0o644)
-}
-
-func OneFile(root *Path, name string, content string) error {
-	file := root.Join(name)
-	return file.WriteFile([]byte(content), 0o644)
-}
-
-func NFiles(root *Path, n int) error {
-	for i := 0; i < n; i++ {
-		if err := OneFile(root, fmt.Sprintf("file%d.txt", i), fmt.Sprintf("file%d contents", i)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// TwoFilesAtRootTwoInSubdir creates two files in the root dir,
-// a directory, and creates two files inside that new directory.
-func TwoFilesAtRootTwoInSubdir(root *Path) error {
-	if err := NFiles(root, 2); err != nil {
-		return err
-	}
-	subdir := root.Join("subdir")
-	if err := subdir.Mkdir(0o777); err != nil {
-		return err
-	}
-	return NFiles(subdir, 2)
-}
-
 // *********
 // * TESTS *
 // *********
@@ -60,7 +22,7 @@ type WalkSuiteAll struct {
 	suite.Suite
 	walk      *Walk
 	root      *Path
-	algorithm string
+	algorithm Algorithm
 	Fs        afero.Fs
 }
 
@@ -71,7 +33,7 @@ func (w *WalkSuiteAll) SetupTest() {
 	w.root = NewPathAfero("/", w.Fs)
 	w.walk, err = NewWalk(w.root)
 	require.NoError(w.T(), err)
-	w.walk.Opts.WalkAlgorithm = w.algorithm
+	w.walk.Opts.Algorithm = w.algorithm
 }
 
 func (w *WalkSuiteAll) TeardownTest() {
@@ -144,9 +106,9 @@ func (w *WalkSuiteAll) TestWalkFuncErr() {
 }
 
 func TestWalkSuite(t *testing.T) {
-	for _, algorithm := range []string{
-		AlgorithmBasic(),
-		AlgorithmDepthFirst(),
+	for _, algorithm := range []Algorithm{
+		AlgorithmBasic,
+		AlgorithmDepthFirst,
 	} {
 		walkSuite := new(WalkSuiteAll)
 		walkSuite.algorithm = algorithm
@@ -159,7 +121,7 @@ func TestDefaultWalkOpts(t *testing.T) {
 		name string
 		want *WalkOpts
 	}{
-		{"assert defaults", &WalkOpts{-1, AlgorithmBasic(), false, 100}},
+		{"assert defaults", &WalkOpts{-1, AlgorithmBasic, false}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -169,6 +131,8 @@ func TestDefaultWalkOpts(t *testing.T) {
 		})
 	}
 }
+
+var ConfusedWandering Algorithm = 0xBADC0DE
 
 func TestWalk_Walk(t *testing.T) {
 	type fields struct {
@@ -187,7 +151,7 @@ func TestWalk_Walk(t *testing.T) {
 		{
 			name: "Bad algoritm",
 			fields: fields{
-				Opts: &WalkOpts{WalkAlgorithm: "confused wandering"},
+				Opts: &WalkOpts{Algorithm: ConfusedWandering},
 			},
 			wantErr: true,
 		},

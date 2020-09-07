@@ -301,6 +301,29 @@ func (p *PathSuite) TestEquals() {
 	p.True(hello1.Equals(hello2))
 }
 
+func (p *PathSuite) TestReadDir() {
+	require.NoError(p.T(), TwoFilesAtRootTwoInSubdir(p.tmpdir))
+	paths, err := p.tmpdir.ReadDir()
+	p.NoError(err)
+	p.Equal(3, len(paths))
+}
+
+func (p *PathSuite) TestReadDirInvalidPath() {
+	paths, err := p.tmpdir.Join("i_dont_exist").ReadDir()
+	p.Error(err)
+	p.Equal(0, len(paths))
+}
+
+func (p *PathSuite) TestCreate() {
+	msg := "hello world"
+	file, err := p.tmpdir.Join("hello.txt").Create()
+	p.NoError(err)
+	defer file.Close()
+	n, err := file.WriteString(msg)
+	p.Equal(len(msg), n)
+	p.NoError(err)
+}
+
 func TestPathSuite(t *testing.T) {
 	suite.Run(t, new(PathSuite))
 }
