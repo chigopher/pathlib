@@ -22,8 +22,14 @@ type WalkOpts struct {
 	// to True. Here be dragons!
 	FollowSymlinks bool
 
-	// Size of the FIFO queue used when doing a breadth-first search
-	FIFOQueueSize int
+	// VisitFirst specifies that, in the algorithms where it is appropriate,
+	// a node's contents should be visited first, before recursing down. If false,
+	// a node's subdirectories will be recursed first before visiting any of its
+	// other children.
+	//
+	// This option is not appropriate in the Basic algorithm, where ordering is
+	// explicitly forbidden.
+	// VisitFirst bool
 }
 
 // DefaultWalkOpts returns the default WalkOpts struct used when
@@ -33,14 +39,21 @@ func DefaultWalkOpts() *WalkOpts {
 		Depth:          -1,
 		WalkAlgorithm:  AlgorithmBasic(),
 		FollowSymlinks: false,
-		FIFOQueueSize:  100,
+		// VisitFirst:     false,
 	}
 }
 
+// AlgorithmDepthFirst is a walk algorithm. It iterates over a filesystem tree
+// by first recursing as far down as it can in one path. Each directory is visited
+// only after all of its children directories have been recursed.
 func AlgorithmDepthFirst() string {
 	return "depth-first"
 }
 
+// AlgorithmBasic is a walk algorithm. It iterates over filesystem objects in the
+// order in which they are returned by the operating system. It guarantees no
+// ordering of any kind. This is the most efficient algorithm and should be used
+// in all cases where ordering does not matter.
 func AlgorithmBasic() string {
 	return "basic"
 }
