@@ -84,7 +84,8 @@ func doesNotImplementErr(interfaceName string, fs afero.Fs) error {
 
 // Create creates a file if possible, returning the file and an error, if any happens.
 func (p *Path) Create() (afero.File, error) {
-	return p.Fs().Create(p.Path())
+	file, err := p.Fs().Create(p.Path())
+	return File{file}, err
 }
 
 // Mkdir makes the current dir. If the parents don't exist, an error
