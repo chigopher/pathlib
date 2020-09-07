@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/afero"
+	"github.com/LandonTClipp/afero"
 )
 
 // Path is an object that represents a path
@@ -219,11 +219,6 @@ func (p *Path) ReadFile() ([]byte, error) {
 // SafeWriteReader is the same as WriteReader but checks to see if file/directory already exists.
 func (p *Path) SafeWriteReader(r io.Reader) error {
 	return afero.SafeWriteReader(p.Fs(), p.Path(), r)
-}
-
-// Walk walks path, using the given filepath.WalkFunc to handle each
-func (p *Path) Walk(walkFn filepath.WalkFunc) error {
-	return afero.Walk(p.Fs(), p.Path(), walkFn)
 }
 
 // WriteFile writes the given data to the path (if possible). If the file exists,
