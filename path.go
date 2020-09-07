@@ -83,7 +83,7 @@ func doesNotImplementErr(interfaceName string, fs afero.Fs) error {
 // *******************************
 
 // Create creates a file if possible, returning the file and an error, if any happens.
-func (p *Path) Create() (afero.File, error) {
+func (p *Path) Create() (File, error) {
 	file, err := p.Fs().Create(p.Path())
 	return File{file}, err
 }
