@@ -456,13 +456,13 @@ func (p *Path) IsFile() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return IsFile(fileInfo)
+	return IsFile(fileInfo), nil
 }
 
 // IsFile returns whether or not the file described by the given
 // os.FileInfo is a regular file.
-func IsFile(fileInfo os.FileInfo) (bool, error) {
-	return fileInfo.Mode().IsRegular(), nil
+func IsFile(fileInfo os.FileInfo) bool {
+	return fileInfo.Mode().IsRegular()
 }
 
 // IsSymlink returns true if the given path is a symlink.
@@ -472,16 +472,13 @@ func (p *Path) IsSymlink() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return IsSymlink(fileInfo)
+	return IsSymlink(fileInfo), nil
 }
 
 // IsSymlink returns true if the file described by the given
 // os.FileInfo describes a symlink.
-func IsSymlink(fileInfo os.FileInfo) (bool, error) {
-	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		return true, nil
-	}
-	return false, nil
+func IsSymlink(fileInfo os.FileInfo) bool {
+	return fileInfo.Mode()&os.ModeSymlink != 0
 }
 
 // Path returns the string representation of the path

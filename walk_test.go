@@ -121,7 +121,16 @@ func TestDefaultWalkOpts(t *testing.T) {
 		name string
 		want *WalkOpts
 	}{
-		{"assert defaults", &WalkOpts{-1, AlgorithmBasic, false}},
+		{"assert defaults", &WalkOpts{
+			Depth:           -1,
+			Algorithm:       AlgorithmBasic,
+			FollowSymlinks:  false,
+			MinimumFileSize: -1,
+			MaximumFileSize: -1,
+			VisitFiles:      true,
+			VisitDirs:       true,
+			VisitSymlinks:   true,
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

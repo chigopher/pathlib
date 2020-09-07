@@ -22,6 +22,24 @@ type WalkOpts struct {
 	// to True. Here be dragons!
 	FollowSymlinks bool
 
+	// MinimumFileSize specifies the minimum size of a file for visitation.
+	// If negative, there is no minimum size.
+	MinimumFileSize int64
+
+	// MaximumFileSize specifies the maximum size of a file for visitation.
+	// If negative, there is no maximum size.
+	MaximumFileSize int64
+
+	// VisitFiles specifies that we should visit regular files during
+	// the walk.
+	VisitFiles bool
+
+	// VisitDirs specifies that we should visit directories during the walk.
+	VisitDirs bool
+
+	// VisitSymlinks specifies that we should visit symlinks during the walk.
+	VisitSymlinks bool
+
 	// VisitFirst specifies that, in the algorithms where it is appropriate,
 	// a node's contents should be visited first, before recursing down. If false,
 	// a node's subdirectories will be recursed first before visiting any of its
@@ -36,10 +54,31 @@ type WalkOpts struct {
 // walking a directory.
 func DefaultWalkOpts() *WalkOpts {
 	return &WalkOpts{
-		Depth:          -1,
-		Algorithm:      AlgorithmBasic,
-		FollowSymlinks: false,
+		Depth:           -1,
+		Algorithm:       AlgorithmBasic,
+		FollowSymlinks:  false,
+		MinimumFileSize: -1,
+		MaximumFileSize: -1,
+		VisitFiles:      true,
+		VisitDirs:       true,
+		VisitSymlinks:   true,
 	}
+}
+
+// MeetsMinimumSize returns whether size is at least the minimum specified.
+func (w *WalkOpts) MeetsMinimumSize(size int64) bool {
+	if w.MinimumFileSize < 0 {
+		return true
+	}
+	return size >= w.MinimumFileSize
+}
+
+// MeetsMaximumSize returns whether size is less than or equal to the maximum specified.
+func (w *WalkOpts) MeetsMaximumSize(size int64) bool {
+	if w.MaximumFileSize < 0 {
+		return true
+	}
+	return size <= w.MaximumFileSize
 }
 
 // Algorithm represents the walk algorithm that will be performed.
@@ -100,7 +139,7 @@ func (w *Walk) walkDFS(walkFn WalkFunc, root *Path, currentDepth int) error {
 		return nil
 	}
 
-	var nonDirectories []*dfsObjectInfo
+	var children []*dfsObjectInfo
 
 	if err := w.iterateImmediateChildren(root, func(child *Path, info os.FileInfo, encounteredErr error) error {
 		// Since we are doing depth-first, we have to first recurse through all the directories,
@@ -109,26 +148,32 @@ func (w *Walk) walkDFS(walkFn WalkFunc, root *Path, currentDepth int) error {
 			if err := w.walkDFS(walkFn, child, currentDepth+1); err != nil {
 				return err
 			}
-			if err := walkFn(child, info, encounteredErr); err != nil {
-				return err
-			}
-		} else {
-			nonDirectories = append(nonDirectories, &dfsObjectInfo{
-				path: child,
-				info: info,
-				err:  encounteredErr,
-			})
 		}
+
+		children = append(children, &dfsObjectInfo{
+			path: child,
+			info: info,
+			err:  encounteredErr,
+		})
+
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	// Iterate over all non-directory objects
-	for _, nonDir := range nonDirectories {
-		if err := walkFn(nonDir.path, nonDir.info, nonDir.err); err != nil {
+	// Iterate over all children after all subdirs have been recursed
+	for _, child := range children {
+		passesQuery, err := w.passesQuerySpecification(child.info)
+		if err != nil {
 			return err
 		}
+
+		if passesQuery {
+			if err := walkFn(child.path, child.info, child.err); err != nil {
+				return err
+			}
+		}
+
 	}
 	return nil
 }
@@ -150,11 +195,10 @@ func (w *Walk) iterateImmediateChildren(root *Path, algorithmFunction WalkFunc) 
 		}
 		if w.Opts.FollowSymlinks {
 			info, err = child.Stat()
-			isSymlink, err := IsSymlink(info)
 			if err != nil {
 				return err
 			}
-			if isSymlink {
+			if IsSymlink(info) {
 				child, err = child.ResolveAll()
 				if err != nil {
 					return err
@@ -179,6 +223,28 @@ func (w *Walk) iterateImmediateChildren(root *Path, algorithmFunction WalkFunc) 
 	return nil
 }
 
+// passesQuerySpecification returns whether or not the object described by
+// the os.FileInfo passes all of the query specifications listed in
+// the walk options.
+func (w *Walk) passesQuerySpecification(info os.FileInfo) (bool, error) {
+	if IsFile(info) {
+		if !w.Opts.VisitFiles {
+			return false, nil
+		}
+
+		if !w.Opts.MeetsMinimumSize(info.Size()) ||
+			!w.Opts.MeetsMaximumSize(info.Size()) {
+			return false, nil
+		}
+	} else if IsDir(info) && !w.Opts.VisitDirs {
+		return false, nil
+	} else if IsSymlink(info) && !w.Opts.VisitSymlinks {
+		return false, nil
+	}
+
+	return true, nil
+}
+
 func (w *Walk) walkBasic(walkFn WalkFunc, root *Path, currentDepth int) error {
 	if w.maxDepthReached(currentDepth) {
 		return nil
@@ -191,9 +257,17 @@ func (w *Walk) walkBasic(walkFn WalkFunc, root *Path, currentDepth int) error {
 			}
 		}
 
-		if err := walkFn(child, info, encounteredErr); err != nil {
+		passesQuery, err := w.passesQuerySpecification(info)
+		if err != nil {
 			return err
 		}
+
+		if passesQuery {
+			if err := walkFn(child, info, encounteredErr); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 
