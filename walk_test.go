@@ -60,7 +60,7 @@ type WalkSuiteAll struct {
 	suite.Suite
 	walk      *Walk
 	root      *Path
-	algorithm string
+	algorithm Algorithm
 	Fs        afero.Fs
 }
 
@@ -71,7 +71,7 @@ func (w *WalkSuiteAll) SetupTest() {
 	w.root = NewPathAfero("/", w.Fs)
 	w.walk, err = NewWalk(w.root)
 	require.NoError(w.T(), err)
-	w.walk.Opts.WalkAlgorithm = w.algorithm
+	w.walk.Opts.Algorithm = w.algorithm
 }
 
 func (w *WalkSuiteAll) TeardownTest() {
@@ -144,9 +144,9 @@ func (w *WalkSuiteAll) TestWalkFuncErr() {
 }
 
 func TestWalkSuite(t *testing.T) {
-	for _, algorithm := range []string{
-		AlgorithmBasic(),
-		AlgorithmDepthFirst(),
+	for _, algorithm := range []Algorithm{
+		AlgorithmBasic,
+		AlgorithmDepthFirst,
 	} {
 		walkSuite := new(WalkSuiteAll)
 		walkSuite.algorithm = algorithm
@@ -159,7 +159,7 @@ func TestDefaultWalkOpts(t *testing.T) {
 		name string
 		want *WalkOpts
 	}{
-		{"assert defaults", &WalkOpts{-1, AlgorithmBasic(), false, 100}},
+		{"assert defaults", &WalkOpts{-1, AlgorithmBasic, false}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -169,6 +169,8 @@ func TestDefaultWalkOpts(t *testing.T) {
 		})
 	}
 }
+
+var ConfusedWandering Algorithm = 0xBADC0DE
 
 func TestWalk_Walk(t *testing.T) {
 	type fields struct {
@@ -187,7 +189,7 @@ func TestWalk_Walk(t *testing.T) {
 		{
 			name: "Bad algoritm",
 			fields: fields{
-				Opts: &WalkOpts{WalkAlgorithm: "confused wandering"},
+				Opts: &WalkOpts{Algorithm: ConfusedWandering},
 			},
 			wantErr: true,
 		},

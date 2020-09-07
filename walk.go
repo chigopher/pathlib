@@ -12,18 +12,15 @@ type WalkOpts struct {
 	// infinite depth. 0 means only the direct children of root will be returned, etc.
 	Depth int
 
-	// WalkAlgorithm specifies the algoritm that the Walk() function should use to
+	// Algorithm specifies the algoritm that the Walk() function should use to
 	// traverse the directory.
-	WalkAlgorithm string
+	Algorithm Algorithm
 
 	// FollowSymlinks defines whether symlinks should be dereferenced or not. If True,
 	// the symlink itself will never be returned to WalkFunc, but rather whatever it
 	// points to. Warning!!! You are exposing yourself to substantial risk by setting this
 	// to True. Here be dragons!
 	FollowSymlinks bool
-
-	// Size of the FIFO queue used when doing a breadth-first search
-	FIFOQueueSize int
 }
 
 // DefaultWalkOpts returns the default WalkOpts struct used when
@@ -31,19 +28,25 @@ type WalkOpts struct {
 func DefaultWalkOpts() *WalkOpts {
 	return &WalkOpts{
 		Depth:          -1,
-		WalkAlgorithm:  AlgorithmBasic(),
+		Algorithm:      AlgorithmBasic,
 		FollowSymlinks: false,
-		FIFOQueueSize:  100,
 	}
 }
 
-func AlgorithmDepthFirst() string {
-	return "depth-first"
-}
+// Algorithm represents the walk algorithm that will be performed.
+type Algorithm int
 
-func AlgorithmBasic() string {
-	return "basic"
-}
+const (
+	// AlgorithmBasic is a walk algorithm. It iterates over filesystem objects in the
+	// order in which they are returned by the operating system. It guarantees no
+	// ordering of any kind. This is the most efficient algorithm and should be used
+	// in all cases where ordering does not matter.
+	AlgorithmBasic Algorithm = iota
+	// AlgorithmDepthFirst is a walk algorithm. It iterates over a filesystem tree
+	// by first recursing as far down as it can in one path. Each directory is visited
+	// only after all of its children directories have been recursed.
+	AlgorithmDepthFirst
+)
 
 // Walk is an object that handles walking through a directory tree
 type Walk struct {
@@ -194,8 +197,8 @@ type WalkFunc func(path *Path, info os.FileInfo, err error) error
 // Walk walks the directory using the algorithm specified in the configuration.
 func (w *Walk) Walk(walkFn WalkFunc) error {
 
-	switch w.Opts.WalkAlgorithm {
-	case AlgorithmBasic():
+	switch w.Opts.Algorithm {
+	case AlgorithmBasic:
 		if err := w.walkBasic(walkFn, w.root, 0); err != nil {
 			if errors.Is(err, ErrStopWalk) {
 				return nil
@@ -203,7 +206,7 @@ func (w *Walk) Walk(walkFn WalkFunc) error {
 			return err
 		}
 		return nil
-	case AlgorithmDepthFirst():
+	case AlgorithmDepthFirst:
 		if err := w.walkDFS(walkFn, w.root, 0); err != nil {
 			if errors.Is(err, ErrStopWalk) {
 				return nil
