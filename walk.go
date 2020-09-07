@@ -21,6 +21,15 @@ type WalkOpts struct {
 	// points to. Warning!!! You are exposing yourself to substantial risk by setting this
 	// to True. Here be dragons!
 	FollowSymlinks bool
+
+	// VisitFirst specifies that, in the algorithms where it is appropriate,
+	// a node's contents should be visited first, before recursing down. If false,
+	// a node's subdirectories will be recursed first before visiting any of its
+	// other children.
+	//
+	// This option is not appropriate in the Basic algorithm, where ordering is
+	// explicitly forbidden.
+	// VisitFirst bool
 }
 
 // DefaultWalkOpts returns the default WalkOpts struct used when
