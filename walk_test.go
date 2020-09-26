@@ -2,6 +2,7 @@ package pathlib
 
 import (
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"testing"
 
@@ -29,15 +30,18 @@ type WalkSuiteAll struct {
 func (w *WalkSuiteAll) SetupTest() {
 	var err error
 
-	w.Fs = afero.NewMemMapFs()
-	w.root = NewPathAfero("/", w.Fs)
+	tmpdir, err := ioutil.TempDir("", "")
+	require.NoError(w.T(), err)
+
+	w.Fs = afero.NewOsFs()
+	w.root = NewPathAfero(tmpdir, w.Fs)
 	w.walk, err = NewWalk(w.root)
 	require.NoError(w.T(), err)
 	w.walk.Opts.Algorithm = w.algorithm
 }
 
 func (w *WalkSuiteAll) TeardownTest() {
-
+	require.NoError(w.T(), w.root.RemoveAll())
 }
 
 func (w *WalkSuiteAll) TestHello() {
@@ -103,6 +107,70 @@ func (w *WalkSuiteAll) TestWalkFuncErr() {
 	w.EqualError(w.walk.Walk(walkFunc.Execute), wantErr.Error(), "did not receive the expected err")
 	walkFunc.AssertExpectations(w.T())
 	walkFunc.AssertNumberOfCalls(w.T(), "Execute", 1)
+}
+
+func (w *WalkSuiteAll) TestPassesQuerySpecification() {
+	file := w.root.Join("file.txt")
+	require.NoError(w.T(), file.WriteFile([]byte("hello"), 0o644))
+
+	stat, err := file.Stat()
+	require.NoError(w.T(), err)
+
+	// File tests
+	w.walk.Opts.VisitFiles = false
+	passes, err := w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.False(passes, "specified to not visit files, but passed anyway")
+
+	w.walk.Opts.VisitFiles = true
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.True(passes, "specified to visit files, but didn't pass")
+
+	w.walk.Opts.MinimumFileSize = 100
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.False(passes, "specified large file size, but passed anyway")
+
+	w.walk.Opts.MinimumFileSize = 0
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.True(passes, "specified smallfile size, but didn't pass")
+
+	// Directory tests
+	dir := w.root.Join("subdir")
+	require.NoError(w.T(), dir.MkdirAll(0o777))
+
+	stat, err = dir.Stat()
+	require.NoError(w.T(), err)
+
+	w.walk.Opts.VisitDirs = false
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.False(passes, "specified to not visit directories, but passed anyway")
+
+	w.walk.Opts.VisitDirs = true
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.True(passes, "specified to visit directories, but didn't pass")
+
+	// Symlink tests
+	symlink := w.root.Join("symlink")
+	require.NoError(w.T(), symlink.Symlink(file))
+
+	stat, lstatCalled, err := symlink.Lstat()
+	require.NoError(w.T(), err)
+	require.True(w.T(), lstatCalled)
+
+	w.walk.Opts.VisitSymlinks = false
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.False(passes, "specified to not visit symlinks, but passed anyway")
+
+	w.walk.Opts.VisitSymlinks = true
+	passes, err = w.walk.passesQuerySpecification(stat)
+	require.NoError(w.T(), err)
+	w.True(passes, "specified to visit symlinks, but didn't pass")
 }
 
 func TestWalkSuite(t *testing.T) {
