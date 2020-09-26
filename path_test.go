@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LandonTClipp/afero"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -301,6 +301,17 @@ func (p *PathSuite) TestEquals() {
 	p.True(hello1.Equals(hello2))
 }
 
+func (p *PathSuite) TestDeepEquals() {
+	hello := p.tmpdir.Join("hello.txt")
+	require.NoError(p.T(), hello.WriteFile([]byte("hello"), 0o644))
+	symlink := p.tmpdir.Join("symlink")
+	require.NoError(p.T(), symlink.Symlink(hello))
+
+	equals, err := hello.DeepEquals(symlink)
+	p.NoError(err)
+	p.True(equals)
+}
+
 func (p *PathSuite) TestReadDir() {
 	require.NoError(p.T(), TwoFilesAtRootTwoInSubdir(p.tmpdir))
 	paths, err := p.tmpdir.ReadDir()
@@ -322,6 +333,19 @@ func (p *PathSuite) TestCreate() {
 	n, err := file.WriteString(msg)
 	p.Equal(len(msg), n)
 	p.NoError(err)
+}
+
+func (p *PathSuite) TestGlobFunction() {
+	hello1 := p.tmpdir.Join("hello1.txt")
+	require.NoError(p.T(), hello1.WriteFile([]byte("hello"), 0o644))
+
+	hello2 := p.tmpdir.Join("hello2.txt")
+	require.NoError(p.T(), hello2.WriteFile([]byte("hello2"), 0o644))
+
+	paths, err := Glob(p.tmpdir.Fs(), p.tmpdir.Join("hello1*").Path())
+	p.NoError(err)
+	require.Equal(p.T(), 1, len(paths))
+	p.True(hello1.Equals(paths[0]), "received an unexpected path: %v", paths[0])
 }
 
 func TestPathSuite(t *testing.T) {
