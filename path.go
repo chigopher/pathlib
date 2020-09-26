@@ -498,11 +498,11 @@ func (p *Path) DeepEquals(other *Path) (bool, error) {
 		return false, err
 	}
 
-	return selfResolved.Path() == otherResolved.Path(), nil
+	return selfResolved.Equals(otherResolved), nil
 }
 
 // Equals returns whether or not the object's path is identical
-// to the others, in a shallow sense. It simply checks for equivalence
+// to other's, in a shallow sense. It simply checks for equivalence
 // in the unresolved Paths() of each object.
 func (p *Path) Equals(other *Path) bool {
 	return p.Path() == other.Path()
