@@ -421,9 +421,11 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 
 // Lstat lstat's the path if the underlying afero filesystem supports it. If
 // the filesystem does not support afero.Lstater, or if the filesystem implements
-// afero.Lstater but returns false for the "lstat called" return value
+// afero.Lstater but returns false for the "lstat called" return value.
 //
 // A nil os.FileInfo is returned on errors.
+//
+// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) Lstat() (os.FileInfo, error) {
 	lStater, ok := p.Fs().(afero.Lstater)
 	if !ok {
@@ -442,6 +444,8 @@ func (p *Path) Lstat() (os.FileInfo, error) {
 
 // Symlink symlinks to the target location. This will fail if the underlying
 // afero filesystem does not implement afero.Linker.
+//
+// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) Symlink(target *Path) error {
 	symlinker, ok := p.fs.(afero.Linker)
 	if !ok {
