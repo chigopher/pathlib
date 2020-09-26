@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/LandonTClipp/afero"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

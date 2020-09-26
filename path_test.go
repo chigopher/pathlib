@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LandonTClipp/afero"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

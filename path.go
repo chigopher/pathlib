@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LandonTClipp/afero"
+	"github.com/spf13/afero"
 	"github.com/pkg/errors"
 )
 
