@@ -301,6 +301,17 @@ func (p *PathSuite) TestEquals() {
 	p.True(hello1.Equals(hello2))
 }
 
+func (p *PathSuite) TestDeepEquals() {
+	hello := p.tmpdir.Join("hello.txt")
+	require.NoError(p.T(), hello.WriteFile([]byte("hello"), 0o644))
+	symlink := p.tmpdir.Join("symlink")
+	require.NoError(p.T(), symlink.Symlink(hello))
+
+	equals, err := hello.DeepEquals(symlink)
+	p.NoError(err)
+	p.True(equals)
+}
+
 func (p *PathSuite) TestReadDir() {
 	require.NoError(p.T(), TwoFilesAtRootTwoInSubdir(p.tmpdir))
 	paths, err := p.tmpdir.ReadDir()
