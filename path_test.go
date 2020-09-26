@@ -324,6 +324,19 @@ func (p *PathSuite) TestCreate() {
 	p.NoError(err)
 }
 
+func (p *PathSuite) TestGlobFunction() {
+	hello1 := p.tmpdir.Join("hello1.txt")
+	require.NoError(p.T(), hello1.WriteFile([]byte("hello"), 0o644))
+
+	hello2 := p.tmpdir.Join("hello2.txt")
+	require.NoError(p.T(), hello2.WriteFile([]byte("hello2"), 0o644))
+
+	paths, err := Glob(p.tmpdir.Fs(), p.tmpdir.Join("hello1*").Path())
+	p.NoError(err)
+	require.Equal(p.T(), 1, len(paths))
+	p.True(hello1.Equals(paths[0]), "received an unexpected path: %v", paths[0])
+}
+
 func TestPathSuite(t *testing.T) {
 	suite.Run(t, new(PathSuite))
 }

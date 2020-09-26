@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 )
 
 // Path is an object that represents a path
@@ -486,9 +486,9 @@ func (p *Path) Path() string {
 	return p.path
 }
 
-// Equals returns whether or not the path pointed to by other
+// DeepEquals returns whether or not the path pointed to by other
 // has the same resolved filepath as self.
-func (p *Path) Equals(other *Path) (bool, error) {
+func (p *Path) DeepEquals(other *Path) (bool, error) {
 	selfResolved, err := p.ResolveAll()
 	if err != nil {
 		return false, err
@@ -499,6 +499,13 @@ func (p *Path) Equals(other *Path) (bool, error) {
 	}
 
 	return selfResolved.Path() == otherResolved.Path(), nil
+}
+
+// Equals returns whether or not the object's path is identical
+// to the others, in a shallow sense. It simply checks for equivalence
+// in the unresolved Paths() of each object.
+func (p *Path) Equals(other *Path) bool {
+	return p.Path() == other.Path()
 }
 
 // GetLatest returns the file or directory that has the most recent mtime. Only
