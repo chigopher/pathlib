@@ -206,7 +206,7 @@ func (w *Walk) iterateImmediateChildren(root *Path, algorithmFunction WalkFunc) 
 			}
 
 		} else {
-			info, _, err = child.Lstat()
+			info, err = child.Lstat()
 		}
 
 		if info == nil {

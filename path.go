@@ -1,6 +1,7 @@
 package pathlib
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -44,7 +45,7 @@ func NewPathAfero(path string, fs afero.Fs) *Path {
 func Glob(fs afero.Fs, pattern string) ([]*Path, error) {
 	matches, err := afero.Glob(fs, pattern)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to glob")
+		return nil, fmt.Errorf("failed to glob: %w", err)
 	}
 
 	pathMatches := []*Path{}
@@ -75,7 +76,15 @@ func (p *Path) doesNotImplementErr(interfaceName string) error {
 }
 
 func doesNotImplementErr(interfaceName string, fs afero.Fs) error {
-	return errors.Wrapf(ErrDoesNotImplement, "Path's afero filesystem %s does not implement %s", getFsName(fs), interfaceName)
+	return fmt.Errorf("%w: Path's afero filesystem %s does not implement %s", ErrDoesNotImplement, getFsName(fs), interfaceName)
+}
+
+func (p *Path) lstatNotPossible() error {
+	return lstatNotPossible(p.Fs())
+}
+
+func lstatNotPossible(fs afero.Fs) error {
+	return fmt.Errorf("%w: Path's afero filesystem %s does not support lstat", ErrLstatNotPossible, getFsName(fs))
 }
 
 // *******************************
@@ -387,7 +396,6 @@ func normalizePathParts(path []string) []string {
 // if the object is /path/to/foo.txt and you provide /path/ as the argment, the
 // returned Path object will represent to/foo.txt.
 func (p *Path) RelativeTo(other *Path) (*Path, error) {
-
 	thisPathNormalized := normalizePathString(p.Path())
 	otherPathNormalized := normalizePathString(other.Path())
 
@@ -398,7 +406,7 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 	var relativeBase int
 	for idx, part := range otherParts {
 		if thisParts[idx] != part {
-			return p, errors.Errorf("%s does not start with %s", thisPathNormalized, otherPathNormalized)
+			return p, fmt.Errorf("%s does not start with %s", thisPathNormalized, otherPathNormalized)
 		}
 		relativeBase = idx
 	}
@@ -413,17 +421,20 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 }
 
 // Lstat lstat's the path if the underlying afero filesystem supports it. If
-// the filesystem does not support afero.Lstater, an error will be returned.
-// A nil os.FileInfo is returned on errors. Also returned is a boolean describing
-// whether or not Lstat was called (in cases where the filesystem is an OS filesystem)
-// or not called (in cases where only Stat is supported). See
-// https://godoc.org/github.com/spf13/afero#Lstater for more info.
-func (p *Path) Lstat() (os.FileInfo, bool, error) {
+// the filesystem does not support afero.Lstater, or if the filesystem implements
+// afero.Lstater but returns false for the "lstat called" return value
+//
+// A nil os.FileInfo is returned on errors.
+func (p *Path) Lstat() (os.FileInfo, error) {
 	lStater, ok := p.Fs().(afero.Lstater)
 	if !ok {
-		return nil, false, p.doesNotImplementErr("afero.Lstater")
+		return nil, p.doesNotImplementErr("afero.Lstater")
 	}
-	return lStater.LstatIfPossible(p.Path())
+	stat, lstatCalled, err := lStater.LstatIfPossible(p.Path())
+	if !lstatCalled && err == nil {
+		return nil, p.lstatNotPossible()
+	}
+	return stat, err
 }
 
 // *********************************
@@ -468,7 +479,7 @@ func IsFile(fileInfo os.FileInfo) bool {
 // IsSymlink returns true if the given path is a symlink.
 // Fails if the filesystem doesn't implement afero.Lstater.
 func (p *Path) IsSymlink() (bool, error) {
-	fileInfo, _, err := p.Lstat()
+	fileInfo, err := p.Lstat()
 	if err != nil {
 		return false, err
 	}
