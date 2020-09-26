@@ -158,9 +158,8 @@ func (w *WalkSuiteAll) TestPassesQuerySpecification() {
 	symlink := w.root.Join("symlink")
 	require.NoError(w.T(), symlink.Symlink(file))
 
-	stat, lstatCalled, err := symlink.Lstat()
+	stat, err = symlink.Lstat()
 	require.NoError(w.T(), err)
-	require.True(w.T(), lstatCalled)
 
 	w.walk.Opts.VisitSymlinks = false
 	passes, err = w.walk.passesQuerySpecification(stat)
