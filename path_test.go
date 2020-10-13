@@ -85,7 +85,7 @@ func (p *PathSuite) TestChmod() {
 
 func (p *PathSuite) TestMkdir() {
 	subdir := p.tmpdir.Join("subdir")
-	assert.NoError(p.T(), subdir.Mkdir(0o777))
+	assert.NoError(p.T(), subdir.Mkdir())
 	isDir, err := subdir.IsDir()
 	require.NoError(p.T(), err)
 	assert.True(p.T(), isDir)
@@ -93,12 +93,12 @@ func (p *PathSuite) TestMkdir() {
 
 func (p *PathSuite) TestMkdirParentsDontExist() {
 	subdir := p.tmpdir.Join("subdir1", "subdir2")
-	assert.Error(p.T(), subdir.Mkdir(0o777))
+	assert.Error(p.T(), subdir.Mkdir())
 }
 
 func (p *PathSuite) TestMkdirAll() {
 	subdir := p.tmpdir.Join("subdir")
-	assert.NoError(p.T(), subdir.MkdirAll(0o777))
+	assert.NoError(p.T(), subdir.MkdirAll())
 	isDir, err := subdir.IsDir()
 	require.NoError(p.T(), err)
 	assert.True(p.T(), isDir)
@@ -106,7 +106,7 @@ func (p *PathSuite) TestMkdirAll() {
 
 func (p *PathSuite) TestMkdirAllMultipleSubdirs() {
 	subdir := p.tmpdir.Join("subdir1", "subdir2", "subdir3")
-	assert.NoError(p.T(), subdir.MkdirAll(0o777))
+	assert.NoError(p.T(), subdir.MkdirAll())
 	isDir, err := subdir.IsDir()
 	require.NoError(p.T(), err)
 	assert.True(p.T(), isDir)
@@ -154,7 +154,7 @@ func (p *PathSuite) TestSizeNonZero() {
 
 func (p *PathSuite) TestIsDir() {
 	dir := p.tmpdir.Join("dir")
-	require.NoError(p.T(), dir.Mkdir(0o755))
+	require.NoError(p.T(), dir.Mkdir())
 	isDir, err := dir.IsDir()
 	require.NoError(p.T(), err)
 	p.True(isDir)
@@ -225,7 +225,7 @@ func (p *PathSuite) TestDirExists() {
 	require.NoError(p.T(), err)
 	p.False(exists)
 
-	require.NoError(p.T(), dir1.Mkdir(0o755))
+	require.NoError(p.T(), dir1.Mkdir())
 	exists, err = dir1.DirExists()
 	require.NoError(p.T(), err)
 	p.True(exists)
@@ -265,8 +265,8 @@ func (p *PathSuite) TestIsSymlink() {
 }
 
 func (p *PathSuite) TestResolveAll() {
-	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll(0o755))
-	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll(0o755))
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll())
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll())
 	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks", "home").Symlink(NewPath("../data/users/home")))
 	require.NoError(p.T(), p.tmpdir.Join("home").Symlink(NewPath("./mnt/nfs/symlinks/home")))
 
@@ -277,8 +277,8 @@ func (p *PathSuite) TestResolveAll() {
 }
 
 func (p *PathSuite) TestResolveAllAbsolute() {
-	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll(0o755))
-	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll(0o755))
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll())
+	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll())
 	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks", "home").Symlink(p.tmpdir.Join("mnt", "nfs", "data", "users", "home")))
 	require.NoError(p.T(), p.tmpdir.Join("home").Symlink(NewPath("./mnt/nfs/symlinks/home")))
 
@@ -294,9 +294,9 @@ func (p *PathSuite) TestResolveAllAbsolute() {
 
 func (p *PathSuite) TestEquals() {
 	hello1 := p.tmpdir.Join("hello", "world")
-	require.NoError(p.T(), hello1.MkdirAll(0o755))
+	require.NoError(p.T(), hello1.MkdirAll())
 	hello2 := p.tmpdir.Join("hello", "world")
-	require.NoError(p.T(), hello2.MkdirAll(0o755))
+	require.NoError(p.T(), hello2.MkdirAll())
 
 	p.True(hello1.Equals(hello2))
 }
