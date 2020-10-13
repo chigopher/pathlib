@@ -198,13 +198,6 @@ func (w *Walk) iterateImmediateChildren(root *Path, algorithmFunction WalkFunc) 
 			if err != nil {
 				return err
 			}
-			if IsSymlink(info) {
-				child, err = child.ResolveAll()
-				if err != nil {
-					return err
-				}
-			}
-
 		} else {
 			info, err = child.Lstat()
 		}
