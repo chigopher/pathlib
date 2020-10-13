@@ -211,10 +211,10 @@ func (p *Path) IsDir() (bool, error) {
 	return afero.IsDir(p.Fs(), p.String())
 }
 
-// IsDir returns whether or not the os.FileInfo object represents a
+// IsDir returns whether or not the os.FileMode object represents a
 // directory.
-func IsDir(fileInfo os.FileInfo) bool {
-	return fileInfo.IsDir()
+func IsDir(mode os.FileMode) bool {
+	return mode.IsDir()
 }
 
 // IsEmpty checks if a given file or directory is empty.
@@ -484,13 +484,13 @@ func (p *Path) IsFile() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return IsFile(fileInfo), nil
+	return IsFile(fileInfo.Mode()), nil
 }
 
 // IsFile returns whether or not the file described by the given
-// os.FileInfo is a regular file.
-func IsFile(fileInfo os.FileInfo) bool {
-	return fileInfo.Mode().IsRegular()
+// os.FileMode is a regular file.
+func IsFile(mode os.FileMode) bool {
+	return mode.IsRegular()
 }
 
 // IsSymlink returns true if the given path is a symlink.
@@ -500,13 +500,13 @@ func (p *Path) IsSymlink() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return IsSymlink(fileInfo), nil
+	return IsSymlink(fileInfo.Mode()), nil
 }
 
 // IsSymlink returns true if the file described by the given
-// os.FileInfo describes a symlink.
-func IsSymlink(fileInfo os.FileInfo) bool {
-	return fileInfo.Mode()&os.ModeSymlink != 0
+// os.FileMode describes a symlink.
+func IsSymlink(mode os.FileMode) bool {
+	return mode&os.ModeSymlink != 0
 }
 
 // DeepEquals returns whether or not the path pointed to by other

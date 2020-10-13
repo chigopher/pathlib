@@ -144,7 +144,7 @@ func (w *Walk) walkDFS(walkFn WalkFunc, root *Path, currentDepth int) error {
 	if err := w.iterateImmediateChildren(root, func(child *Path, info os.FileInfo, encounteredErr error) error {
 		// Since we are doing depth-first, we have to first recurse through all the directories,
 		// and save all non-directory objects so we can defer handling at a later time.
-		if IsDir(info) {
+		if IsDir(info.Mode()) {
 			if err := w.walkDFS(walkFn, child, currentDepth+1); err != nil {
 				return err
 			}
@@ -220,7 +220,7 @@ func (w *Walk) iterateImmediateChildren(root *Path, algorithmFunction WalkFunc) 
 // the os.FileInfo passes all of the query specifications listed in
 // the walk options.
 func (w *Walk) passesQuerySpecification(info os.FileInfo) (bool, error) {
-	if IsFile(info) {
+	if IsFile(info.Mode()) {
 		if !w.Opts.VisitFiles {
 			return false, nil
 		}
@@ -229,9 +229,9 @@ func (w *Walk) passesQuerySpecification(info os.FileInfo) (bool, error) {
 			!w.Opts.MeetsMaximumSize(info.Size()) {
 			return false, nil
 		}
-	} else if IsDir(info) && !w.Opts.VisitDirs {
+	} else if IsDir(info.Mode()) && !w.Opts.VisitDirs {
 		return false, nil
-	} else if IsSymlink(info) && !w.Opts.VisitSymlinks {
+	} else if IsSymlink(info.Mode()) && !w.Opts.VisitSymlinks {
 		return false, nil
 	}
 
@@ -244,7 +244,7 @@ func (w *Walk) walkBasic(walkFn WalkFunc, root *Path, currentDepth int) error {
 	}
 
 	err := w.iterateImmediateChildren(root, func(child *Path, info os.FileInfo, encounteredErr error) error {
-		if IsDir(info) {
+		if IsDir(info.Mode()) {
 			if err := w.walkBasic(walkFn, child, currentDepth+1); err != nil {
 				return err
 			}
