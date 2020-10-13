@@ -190,7 +190,7 @@ func (w *Walk) iterateImmediateChildren(root *Path, algorithmFunction WalkFunc) 
 
 	var info os.FileInfo
 	for _, child := range children {
-		if child.Path() == root.Path() {
+		if child.String() == root.String() {
 			continue
 		}
 		if w.Opts.FollowSymlinks {
