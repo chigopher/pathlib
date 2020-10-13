@@ -139,7 +139,7 @@ func (w *WalkSuiteAll) TestPassesQuerySpecification() {
 
 	// Directory tests
 	dir := w.root.Join("subdir")
-	require.NoError(w.T(), dir.MkdirAll(0o777))
+	require.NoError(w.T(), dir.MkdirAll())
 
 	stat, err = dir.Stat()
 	require.NoError(w.T(), err)

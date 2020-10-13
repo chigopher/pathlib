@@ -19,6 +19,8 @@ type Path struct {
 	// DefaultFileMode is the mode that is used when creating new files in functions
 	// that do not accept os.FileMode as a parameter.
 	DefaultFileMode os.FileMode
+	// DefaultDirMode is the mode that will be used when creating new directories
+	DefaultDirMode os.FileMode
 	// Sep is the seperator used in path calculations. By default this is set to
 	// os.PathSeparator.
 	Sep string
@@ -34,7 +36,8 @@ func NewPathAfero(path string, fs afero.Fs) *Path {
 	return &Path{
 		path:            path,
 		fs:              fs,
-		DefaultFileMode: 0o644,
+		DefaultFileMode: DefaultFileMode,
+		DefaultDirMode:  DefaultDirMode,
 		Sep:             string(os.PathSeparator),
 	}
 }
@@ -98,12 +101,23 @@ func (p *Path) Create() (File, error) {
 
 // Mkdir makes the current dir. If the parents don't exist, an error
 // is returned.
-func (p *Path) Mkdir(perm os.FileMode) error {
+func (p *Path) Mkdir() error {
+	return p.Fs().Mkdir(p.String(), p.DefaultDirMode)
+}
+
+// MkdirMode makes the current dir. If the parents don't exist, an error
+// is returned.
+func (p *Path) MkdirMode(perm os.FileMode) error {
 	return p.Fs().Mkdir(p.String(), perm)
 }
 
 // MkdirAll makes all of the directories up to, and including, the given path.
-func (p *Path) MkdirAll(perm os.FileMode) error {
+func (p *Path) MkdirAll() error {
+	return p.Fs().MkdirAll(p.String(), p.DefaultDirMode)
+}
+
+// MkdirAllMode makes all of the directories up to, and including, the given path.
+func (p *Path) MkdirAllMode(perm os.FileMode) error {
 	return p.Fs().MkdirAll(p.String(), perm)
 }
 

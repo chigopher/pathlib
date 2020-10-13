@@ -31,7 +31,7 @@ func TwoFilesAtRootTwoInSubdir(root *Path) error {
 		return err
 	}
 	subdir := root.Join("subdir")
-	if err := subdir.Mkdir(0o777); err != nil {
+	if err := subdir.Mkdir(); err != nil {
 		return err
 	}
 	return NFiles(subdir, 2)
