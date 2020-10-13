@@ -92,24 +92,24 @@ func lstatNotPossible(fs afero.Fs) error {
 
 // Create creates a file if possible, returning the file and an error, if any happens.
 func (p *Path) Create() (File, error) {
-	file, err := p.Fs().Create(p.Path())
+	file, err := p.Fs().Create(p.String())
 	return File{file}, err
 }
 
 // Mkdir makes the current dir. If the parents don't exist, an error
 // is returned.
 func (p *Path) Mkdir(perm os.FileMode) error {
-	return p.Fs().Mkdir(p.Path(), perm)
+	return p.Fs().Mkdir(p.String(), perm)
 }
 
 // MkdirAll makes all of the directories up to, and including, the given path.
 func (p *Path) MkdirAll(perm os.FileMode) error {
-	return p.Fs().MkdirAll(p.Path(), perm)
+	return p.Fs().MkdirAll(p.String(), perm)
 }
 
 // Open opens a file for read-only, returning it or an error, if any happens.
 func (p *Path) Open() (*File, error) {
-	handle, err := p.Fs().Open(p.Path())
+	handle, err := p.Fs().Open(p.String())
 	return &File{
 		File: handle,
 	}, err
@@ -118,7 +118,7 @@ func (p *Path) Open() (*File, error) {
 // OpenFile opens a file using the given flags and the given mode.
 // See the list of flags at: https://golang.org/pkg/os/#pkg-constants
 func (p *Path) OpenFile(flag int, perm os.FileMode) (*File, error) {
-	handle, err := p.Fs().OpenFile(p.Path(), flag, perm)
+	handle, err := p.Fs().OpenFile(p.String(), flag, perm)
 	return &File{
 		File: handle,
 	}, err
@@ -127,17 +127,17 @@ func (p *Path) OpenFile(flag int, perm os.FileMode) (*File, error) {
 // Remove removes a file, returning an error, if any
 // happens.
 func (p *Path) Remove() error {
-	return p.Fs().Remove(p.Path())
+	return p.Fs().Remove(p.String())
 }
 
 // RemoveAll removes the given path and all of its children.
 func (p *Path) RemoveAll() error {
-	return p.Fs().RemoveAll(p.Path())
+	return p.Fs().RemoveAll(p.String())
 }
 
 // Rename renames a file
 func (p *Path) Rename(newname string) error {
-	if err := p.Fs().Rename(p.Path(), newname); err != nil {
+	if err := p.Fs().Rename(p.String(), newname); err != nil {
 		return err
 	}
 
@@ -149,22 +149,22 @@ func (p *Path) Rename(newname string) error {
 // RenamePath is the same as Rename except the argument is a Path object. The attributes
 // of the path object is retained and does not inherit anything from target.
 func (p *Path) RenamePath(target *Path) error {
-	return p.Rename(target.Path())
+	return p.Rename(target.String())
 }
 
 // Stat returns the os.FileInfo of the given path
 func (p *Path) Stat() (os.FileInfo, error) {
-	return p.Fs().Stat(p.Path())
+	return p.Fs().Stat(p.String())
 }
 
 // Chmod changes the file mode of the given path
 func (p *Path) Chmod(mode os.FileMode) error {
-	return p.Fs().Chmod(p.Path(), mode)
+	return p.Fs().Chmod(p.String(), mode)
 }
 
 // Chtimes changes the modification and access time of the given path.
 func (p *Path) Chtimes(atime time.Time, mtime time.Time) error {
-	return p.Fs().Chtimes(p.Path(), atime, mtime)
+	return p.Fs().Chtimes(p.String(), atime, mtime)
 }
 
 // ************************
@@ -173,28 +173,28 @@ func (p *Path) Chtimes(atime time.Time, mtime time.Time) error {
 
 // DirExists returns whether or not the path represents a directory that exists
 func (p *Path) DirExists() (bool, error) {
-	return afero.DirExists(p.Fs(), p.Path())
+	return afero.DirExists(p.Fs(), p.String())
 }
 
 // Exists returns whether the path exists
 func (p *Path) Exists() (bool, error) {
-	return afero.Exists(p.Fs(), p.Path())
+	return afero.Exists(p.Fs(), p.String())
 }
 
 // FileContainsAnyBytes returns whether or not the path contains
 // any of the listed bytes.
 func (p *Path) FileContainsAnyBytes(subslices [][]byte) (bool, error) {
-	return afero.FileContainsAnyBytes(p.Fs(), p.Path(), subslices)
+	return afero.FileContainsAnyBytes(p.Fs(), p.String(), subslices)
 }
 
 // FileContainsBytes returns whether or not the given file contains the bytes
 func (p *Path) FileContainsBytes(subslice []byte) (bool, error) {
-	return afero.FileContainsBytes(p.Fs(), p.Path(), subslice)
+	return afero.FileContainsBytes(p.Fs(), p.String(), subslice)
 }
 
 // IsDir checks if a given path is a directory.
 func (p *Path) IsDir() (bool, error) {
-	return afero.IsDir(p.Fs(), p.Path())
+	return afero.IsDir(p.Fs(), p.String())
 }
 
 // IsDir returns whether or not the os.FileInfo object represents a
@@ -205,7 +205,7 @@ func IsDir(fileInfo os.FileInfo) bool {
 
 // IsEmpty checks if a given file or directory is empty.
 func (p *Path) IsEmpty() (bool, error) {
-	return afero.IsEmpty(p.Fs(), p.Path())
+	return afero.IsEmpty(p.Fs(), p.String())
 }
 
 // ReadDir reads the current path and returns a list of the corresponding
@@ -232,24 +232,24 @@ func (p *Path) ReadDir() ([]*Path, error) {
 // ReadFile reads the given path and returns the data. If the file doesn't exist
 // or is a directory, an error is returned.
 func (p *Path) ReadFile() ([]byte, error) {
-	return afero.ReadFile(p.Fs(), p.Path())
+	return afero.ReadFile(p.Fs(), p.String())
 }
 
 // SafeWriteReader is the same as WriteReader but checks to see if file/directory already exists.
 func (p *Path) SafeWriteReader(r io.Reader) error {
-	return afero.SafeWriteReader(p.Fs(), p.Path(), r)
+	return afero.SafeWriteReader(p.Fs(), p.String(), r)
 }
 
 // WriteFile writes the given data to the path (if possible). If the file exists,
 // the file is truncated. If the file is a directory, or the path doesn't exist,
 // an error is returned.
 func (p *Path) WriteFile(data []byte, perm os.FileMode) error {
-	return afero.WriteFile(p.Fs(), p.Path(), data, perm)
+	return afero.WriteFile(p.Fs(), p.String(), data, perm)
 }
 
 // WriteReader takes a reader and writes the content
 func (p *Path) WriteReader(r io.Reader) error {
-	return afero.WriteReader(p.Fs(), p.Path(), r)
+	return afero.WriteReader(p.Fs(), p.String(), r)
 }
 
 // *************************************
@@ -263,7 +263,7 @@ func (p *Path) Name() string {
 
 // Parent returns the Path object of the parent directory
 func (p *Path) Parent() *Path {
-	return NewPathAfero(filepath.Dir(p.Path()), p.Fs())
+	return NewPathAfero(filepath.Dir(p.String()), p.Fs())
 }
 
 // Resolve resolves the path to the location pointed to by the symlink,
@@ -342,7 +342,7 @@ func (p *Path) Parts() []string {
 	if p.IsAbsolute() {
 		parts = append(parts, p.Sep)
 	}
-	normalizedPathStr := normalizePathString(p.Path())
+	normalizedPathStr := normalizePathString(p.String())
 	normalizedParts := normalizePathParts(strings.Split(normalizedPathStr, p.Sep))
 	return append(parts, normalizedParts...)
 }
@@ -395,8 +395,8 @@ func normalizePathParts(path []string) []string {
 // if the object is /path/to/foo.txt and you provide /path/ as the argment, the
 // returned Path object will represent to/foo.txt.
 func (p *Path) RelativeTo(other *Path) (*Path, error) {
-	thisPathNormalized := normalizePathString(p.Path())
-	otherPathNormalized := normalizePathString(other.Path())
+	thisPathNormalized := normalizePathString(p.String())
+	otherPathNormalized := normalizePathString(other.String())
 
 	thisParts := p.Parts()
 	otherParts := other.Parts()
@@ -429,7 +429,7 @@ func (p *Path) Lstat() (os.FileInfo, error) {
 	if !ok {
 		return nil, p.doesNotImplementErr("afero.Lstater")
 	}
-	stat, lstatCalled, err := lStater.LstatIfPossible(p.Path())
+	stat, lstatCalled, err := lStater.LstatIfPossible(p.String())
 	if !lstatCalled && err == nil {
 		return nil, p.lstatNotPossible()
 	}
@@ -457,7 +457,7 @@ func (p *Path) Symlink(target *Path) error {
 
 // String returns the string representation of the path
 func (p *Path) String() string {
-	return p.Path()
+	return p.path
 }
 
 // IsFile returns true if the given path is a file.
@@ -491,11 +491,6 @@ func IsSymlink(fileInfo os.FileInfo) bool {
 	return fileInfo.Mode()&os.ModeSymlink != 0
 }
 
-// Path returns the string representation of the path
-func (p *Path) Path() string {
-	return p.path
-}
-
 // DeepEquals returns whether or not the path pointed to by other
 // has the same resolved filepath as self.
 func (p *Path) DeepEquals(other *Path) (bool, error) {
@@ -515,7 +510,7 @@ func (p *Path) DeepEquals(other *Path) (bool, error) {
 // to other's, in a shallow sense. It simply checks for equivalence
 // in the unresolved Paths() of each object.
 func (p *Path) Equals(other *Path) bool {
-	return p.Path() == other.Path()
+	return p.String() == other.String()
 }
 
 // GetLatest returns the file or directory that has the most recent mtime. Only
@@ -555,7 +550,7 @@ func (p *Path) GetLatest() (*Path, error) {
 
 // Glob returns all matches of pattern relative to this object's path.
 func (p *Path) Glob(pattern string) ([]*Path, error) {
-	return Glob(p.Fs(), p.Join(pattern).Path())
+	return Glob(p.Fs(), p.Join(pattern).String())
 }
 
 // Mtime returns the modification time of the given path.

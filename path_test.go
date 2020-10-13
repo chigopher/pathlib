@@ -54,7 +54,7 @@ func (p *PathSuite) TestSymlinkBadFs() {
 
 func (p *PathSuite) TestJoin() {
 	joined := p.tmpdir.Join("test1")
-	assert.Equal(p.T(), filepath.Join(p.tmpdir.Path(), "test1"), joined.Path())
+	assert.Equal(p.T(), filepath.Join(p.tmpdir.String(), "test1"), joined.String())
 }
 
 func (p *PathSuite) TestWriteAndRead() {
@@ -112,7 +112,7 @@ func (p *PathSuite) TestMkdirAllMultipleSubdirs() {
 	assert.True(p.T(), isDir)
 }
 
-func (p *PathSuite) TestRenamePath() {
+func (p *PathSuite) TestRenameString() {
 	file := p.tmpdir.Join("file.txt")
 	require.NoError(p.T(), file.WriteFile([]byte("hello world!"), 0o755))
 
@@ -120,7 +120,7 @@ func (p *PathSuite) TestRenamePath() {
 
 	err := file.RenamePath(newPath)
 	assert.NoError(p.T(), err)
-	assert.Equal(p.T(), file.Path(), p.tmpdir.Join("file2.txt").Path())
+	assert.Equal(p.T(), file.String(), p.tmpdir.Join("file2.txt").String())
 
 	newBytes, err := file.ReadFile()
 	require.NoError(p.T(), err)
@@ -261,7 +261,7 @@ func (p *PathSuite) TestIsSymlink() {
 
 	stat, _ := symlink.Stat()
 	p.T().Logf("%v", stat.Mode())
-	p.T().Logf(symlink.Path())
+	p.T().Logf(symlink.String())
 }
 
 func (p *PathSuite) TestResolveAll() {
@@ -319,7 +319,7 @@ func (p *PathSuite) TestReadDir() {
 	p.Equal(3, len(paths))
 }
 
-func (p *PathSuite) TestReadDirInvalidPath() {
+func (p *PathSuite) TestReadDirInvalidString() {
 	paths, err := p.tmpdir.Join("i_dont_exist").ReadDir()
 	p.Error(err)
 	p.Equal(0, len(paths))
@@ -342,7 +342,7 @@ func (p *PathSuite) TestGlobFunction() {
 	hello2 := p.tmpdir.Join("hello2.txt")
 	require.NoError(p.T(), hello2.WriteFile([]byte("hello2"), 0o644))
 
-	paths, err := Glob(p.tmpdir.Fs(), p.tmpdir.Join("hello1*").Path())
+	paths, err := Glob(p.tmpdir.Fs(), p.tmpdir.Join("hello1*").String())
 	p.NoError(err)
 	require.Equal(p.T(), 1, len(paths))
 	p.True(hello1.Equals(paths[0]), "received an unexpected path: %v", paths[0])
