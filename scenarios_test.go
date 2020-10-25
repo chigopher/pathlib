@@ -7,12 +7,12 @@ import "fmt"
 
 func HelloWorld(root *Path) error {
 	hello := root.Join("hello.txt")
-	return hello.WriteFile([]byte("hello world"), 0o644)
+	return hello.WriteFile([]byte("hello world"))
 }
 
 func OneFile(root *Path, name string, content string) error {
 	file := root.Join(name)
-	return file.WriteFile([]byte(content), 0o644)
+	return file.WriteFile([]byte(content))
 }
 
 func NFiles(root *Path, n int) error {
