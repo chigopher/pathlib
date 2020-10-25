@@ -7,7 +7,7 @@ Inspired by Python's pathlib, made better by Golang.
 
 `pathlib` is an "object-oriented" package for manipulating filesystem path objects. It takes many cues from [Python's pathlib](https://docs.python.org/3/library/pathlib.html), although it does not strictly adhere to its design philosophy. It provides a simple, intuitive, easy, and abstracted interface for dealing with many different types of filesystems.
 
-`pathlib` is currently in the alpha stage of development, meaning the API is subject to change. However, the current state of the project is already proving to be highly useful.
+`pathlib` is currently in the beta stage of development. The API is not guaranteed to be solidified, however changes will be as minimal as possible.
 
 Table of Contents
 -----------------
