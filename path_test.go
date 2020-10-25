@@ -40,7 +40,7 @@ func (p *PathSuite) TestSymlink() {
 	symlink := p.tmpdir.Join("symlink")
 	require.NoError(p.T(), symlink.Symlink(p.tmpdir))
 
-	linkLocation, err := symlink.Resolve()
+	linkLocation, err := symlink.Readlink()
 	require.NoError(p.T(), err)
 	assert.Equal(p.T(), p.tmpdir.path, linkLocation.path)
 }

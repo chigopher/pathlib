@@ -280,12 +280,13 @@ func (p *Path) Parent() *Path {
 	return NewPathAfero(filepath.Dir(p.String()), p.Fs())
 }
 
-// Resolve resolves the path to the location pointed to by the symlink,
-// if any. Note that if your path is serviced by multiple symlinks,
-// the result of Resolve() may not point to any real path.
+// Readlink returns the target path of a symlink.
+//
 // This will fail if the underlying afero filesystem does not implement
 // afero.LinkReader.
-func (p *Path) Resolve() (*Path, error) {
+//
+// THIS METHOD IS NOT TYPE SAFE.
+func (p *Path) Readlink() (*Path, error) {
 	linkReader, ok := p.Fs().(afero.LinkReader)
 	if !ok {
 		return nil, p.doesNotImplementErr("afero.LinkReader")
@@ -304,7 +305,7 @@ func resolveIfSymlink(path *Path) (*Path, bool, error) {
 		return path, isSymlink, err
 	}
 	if isSymlink {
-		resolvedPath, err := path.Resolve()
+		resolvedPath, err := path.Readlink()
 		if err != nil {
 			// Return the path unchanged on errors
 			return path, isSymlink, err
@@ -345,7 +346,8 @@ func resolveAllHelper(path *Path) (*Path, error) {
 // should be identical to the `readlink -f` command from POSIX OSs.
 // This will fail if the underlying afero filesystem does not implement
 // afero.LinkReader. The path will be returned unchanged on errors.
-// This function is not thread-safe.
+//
+// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) ResolveAll() (*Path, error) {
 	return resolveAllHelper(p)
 }
