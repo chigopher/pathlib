@@ -60,7 +60,7 @@ func (p *PathSuite) TestJoin() {
 func (p *PathSuite) TestWriteAndRead() {
 	expectedBytes := []byte("hello world!")
 	file := p.tmpdir.Join("test.txt")
-	require.NoError(p.T(), file.WriteFile(expectedBytes, 0o755))
+	require.NoError(p.T(), file.WriteFile(expectedBytes))
 	bytes, err := file.ReadFile()
 	require.NoError(p.T(), err)
 	assert.Equal(p.T(), expectedBytes, bytes)
@@ -68,7 +68,7 @@ func (p *PathSuite) TestWriteAndRead() {
 
 func (p *PathSuite) TestChmod() {
 	file := p.tmpdir.Join("file1.txt")
-	require.NoError(p.T(), file.WriteFile([]byte(""), 0o755))
+	require.NoError(p.T(), file.WriteFile([]byte("")))
 
 	file.Chmod(0o777)
 	fileInfo, err := file.Stat()
@@ -114,7 +114,7 @@ func (p *PathSuite) TestMkdirAllMultipleSubdirs() {
 
 func (p *PathSuite) TestRenameString() {
 	file := p.tmpdir.Join("file.txt")
-	require.NoError(p.T(), file.WriteFile([]byte("hello world!"), 0o755))
+	require.NoError(p.T(), file.WriteFile([]byte("hello world!")))
 
 	newPath := p.tmpdir.Join("file2.txt")
 
@@ -137,7 +137,7 @@ func (p *PathSuite) TestRenameString() {
 
 func (p *PathSuite) TestSizeZero() {
 	file := p.tmpdir.Join("file.txt")
-	require.NoError(p.T(), file.WriteFile([]byte{}, 0o644))
+	require.NoError(p.T(), file.WriteFile([]byte{}))
 	size, err := file.Size()
 	require.NoError(p.T(), err)
 	p.Zero(size)
@@ -146,7 +146,7 @@ func (p *PathSuite) TestSizeZero() {
 func (p *PathSuite) TestSizeNonZero() {
 	msg := "oh, it's you"
 	file := p.tmpdir.Join("file.txt")
-	require.NoError(p.T(), file.WriteFile([]byte(msg), 0o644))
+	require.NoError(p.T(), file.WriteFile([]byte(msg)))
 	size, err := file.Size()
 	require.NoError(p.T(), err)
 	p.Equal(len(msg), int(size))
@@ -162,7 +162,7 @@ func (p *PathSuite) TestIsDir() {
 
 func (p *PathSuite) TestIsntDir() {
 	file := p.tmpdir.Join("file.txt")
-	require.NoError(p.T(), file.WriteFile([]byte("hello world!"), 0o644))
+	require.NoError(p.T(), file.WriteFile([]byte("hello world!")))
 	isDir, err := file.IsDir()
 	require.NoError(p.T(), err)
 	p.False(isDir)
@@ -172,7 +172,7 @@ func (p *PathSuite) TestGetLatest() {
 	now := time.Now()
 	for i := 0; i < 5; i++ {
 		file := p.tmpdir.Join(fmt.Sprintf("file%d.txt", i))
-		require.NoError(p.T(), file.WriteFile([]byte(fmt.Sprintf("hello %d", i)), 0o644))
+		require.NoError(p.T(), file.WriteFile([]byte(fmt.Sprintf("hello %d", i))))
 		require.NoError(p.T(), file.Chtimes(now, now))
 		now = now.Add(time.Duration(1) * time.Hour)
 	}
@@ -192,7 +192,7 @@ func (p *PathSuite) TestGetLatestEmpty() {
 func (p *PathSuite) TestOpen() {
 	msg := "cubs > cardinals"
 	file := p.tmpdir.Join("file.txt")
-	require.NoError(p.T(), file.WriteFile([]byte(msg), 0o644))
+	require.NoError(p.T(), file.WriteFile([]byte(msg)))
 	fileHandle, err := file.Open()
 	require.NoError(p.T(), err)
 
@@ -204,7 +204,7 @@ func (p *PathSuite) TestOpen() {
 
 func (p *PathSuite) TestOpenFile() {
 	file := p.tmpdir.Join("file.txt")
-	fileHandle, err := file.OpenFile(os.O_RDWR|os.O_CREATE, 0o644)
+	fileHandle, err := file.OpenFile(os.O_RDWR | os.O_CREATE)
 	require.NoError(p.T(), err)
 
 	msg := "do you play croquet?"
@@ -234,7 +234,7 @@ func (p *PathSuite) TestDirExists() {
 func (p *PathSuite) TestIsFile() {
 	file1 := p.tmpdir.Join("file.txt")
 
-	require.NoError(p.T(), file1.WriteFile([]byte(""), 0o644))
+	require.NoError(p.T(), file1.WriteFile([]byte("")))
 	exists, err := file1.IsFile()
 	require.NoError(p.T(), err)
 	p.True(exists)
@@ -243,7 +243,7 @@ func (p *PathSuite) TestIsFile() {
 func (p *PathSuite) TestIsEmpty() {
 	file1 := p.tmpdir.Join("file.txt")
 
-	require.NoError(p.T(), file1.WriteFile([]byte(""), 0o644))
+	require.NoError(p.T(), file1.WriteFile([]byte("")))
 	isEmpty, err := file1.IsEmpty()
 	require.NoError(p.T(), err)
 	p.True(isEmpty)
@@ -251,7 +251,7 @@ func (p *PathSuite) TestIsEmpty() {
 
 func (p *PathSuite) TestIsSymlink() {
 	file1 := p.tmpdir.Join("file.txt")
-	require.NoError(p.T(), file1.WriteFile([]byte(""), 0o644))
+	require.NoError(p.T(), file1.WriteFile([]byte("")))
 
 	symlink := p.tmpdir.Join("symlink")
 	p.NoError(symlink.Symlink(file1))
@@ -303,7 +303,7 @@ func (p *PathSuite) TestEquals() {
 
 func (p *PathSuite) TestDeepEquals() {
 	hello := p.tmpdir.Join("hello.txt")
-	require.NoError(p.T(), hello.WriteFile([]byte("hello"), 0o644))
+	require.NoError(p.T(), hello.WriteFile([]byte("hello")))
 	symlink := p.tmpdir.Join("symlink")
 	require.NoError(p.T(), symlink.Symlink(hello))
 
@@ -337,10 +337,10 @@ func (p *PathSuite) TestCreate() {
 
 func (p *PathSuite) TestGlobFunction() {
 	hello1 := p.tmpdir.Join("hello1.txt")
-	require.NoError(p.T(), hello1.WriteFile([]byte("hello"), 0o644))
+	require.NoError(p.T(), hello1.WriteFile([]byte("hello")))
 
 	hello2 := p.tmpdir.Join("hello2.txt")
-	require.NoError(p.T(), hello2.WriteFile([]byte("hello2"), 0o644))
+	require.NoError(p.T(), hello2.WriteFile([]byte("hello2")))
 
 	paths, err := Glob(p.tmpdir.Fs(), p.tmpdir.Join("hello1*").String())
 	p.NoError(err)

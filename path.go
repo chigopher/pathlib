@@ -129,9 +129,18 @@ func (p *Path) Open() (*File, error) {
 	}, err
 }
 
-// OpenFile opens a file using the given flags and the given mode.
+// OpenFile opens a file using the given flags.
 // See the list of flags at: https://golang.org/pkg/os/#pkg-constants
-func (p *Path) OpenFile(flag int, perm os.FileMode) (*File, error) {
+func (p *Path) OpenFile(flag int) (*File, error) {
+	handle, err := p.Fs().OpenFile(p.String(), flag, p.DefaultFileMode)
+	return &File{
+		File: handle,
+	}, err
+}
+
+// OpenFileMode opens a file using the given flags and the given mode.
+// See the list of flags at: https://golang.org/pkg/os/#pkg-constants
+func (p *Path) OpenFileMode(flag int, perm os.FileMode) (*File, error) {
 	handle, err := p.Fs().OpenFile(p.String(), flag, perm)
 	return &File{
 		File: handle,
@@ -254,11 +263,18 @@ func (p *Path) SafeWriteReader(r io.Reader) error {
 	return afero.SafeWriteReader(p.Fs(), p.String(), r)
 }
 
+// WriteFileMode writes the given data to the path (if possible). If the file exists,
+// the file is truncated. If the file is a directory, or the path doesn't exist,
+// an error is returned.
+func (p *Path) WriteFileMode(data []byte, perm os.FileMode) error {
+	return afero.WriteFile(p.Fs(), p.String(), data, perm)
+}
+
 // WriteFile writes the given data to the path (if possible). If the file exists,
 // the file is truncated. If the file is a directory, or the path doesn't exist,
 // an error is returned.
-func (p *Path) WriteFile(data []byte, perm os.FileMode) error {
-	return afero.WriteFile(p.Fs(), p.String(), data, perm)
+func (p *Path) WriteFile(data []byte) error {
+	return afero.WriteFile(p.Fs(), p.String(), data, p.DefaultFileMode)
 }
 
 // WriteReader takes a reader and writes the content

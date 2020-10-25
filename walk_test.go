@@ -111,7 +111,7 @@ func (w *WalkSuiteAll) TestWalkFuncErr() {
 
 func (w *WalkSuiteAll) TestPassesQuerySpecification() {
 	file := w.root.Join("file.txt")
-	require.NoError(w.T(), file.WriteFile([]byte("hello"), 0o644))
+	require.NoError(w.T(), file.WriteFile([]byte("hello")))
 
 	stat, err := file.Stat()
 	require.NoError(w.T(), err)
