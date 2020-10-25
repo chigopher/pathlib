@@ -118,7 +118,7 @@ func (p *PathSuite) TestRenameString() {
 
 	newPath := p.tmpdir.Join("file2.txt")
 
-	err := file.RenamePath(newPath)
+	err := file.Rename(newPath)
 	assert.NoError(p.T(), err)
 	assert.Equal(p.T(), file.String(), p.tmpdir.Join("file2.txt").String())
 
@@ -265,15 +265,20 @@ func (p *PathSuite) TestIsSymlink() {
 }
 
 func (p *PathSuite) TestResolveAll() {
-	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp").MkdirAll())
+	home := p.tmpdir.Join("mnt", "nfs", "data", "users", "home", "LandonTClipp")
+	require.NoError(p.T(), home.MkdirAll())
 	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks").MkdirAll())
 	require.NoError(p.T(), p.tmpdir.Join("mnt", "nfs", "symlinks", "home").Symlink(NewPath("../data/users/home")))
 	require.NoError(p.T(), p.tmpdir.Join("home").Symlink(NewPath("./mnt/nfs/symlinks/home")))
 
 	resolved, err := p.tmpdir.Join("home/LandonTClipp").ResolveAll()
-	p.NoError(err)
-	resolvedParts := resolved.Parts()
-	p.Equal("mnt/nfs/data/users/home/LandonTClipp", strings.Join(resolvedParts[len(resolvedParts)-6:], resolved.Sep))
+	p.T().Log(resolved.String())
+	require.NoError(p.T(), err)
+
+	homeResolved, err := home.ResolveAll()
+	require.NoError(p.T(), err)
+
+	p.Equal(homeResolved.Clean().String(), resolved.Clean().String())
 }
 
 func (p *PathSuite) TestResolveAllAbsolute() {
@@ -396,7 +401,7 @@ func TestPath_Join(t *testing.T) {
 			a := afero.NewMemMapFs()
 			p := NewPathAfero(tt.fields, a)
 			want := NewPathAfero(tt.want, a)
-			if got := p.Join(tt.args.elems...); !reflect.DeepEqual(got, want) {
+			if got := p.Join(tt.args.elems...).Clean(); !reflect.DeepEqual(got, want) {
 				t.Errorf("Path.Join() = %v, want %v", got, want)
 			}
 		})
