@@ -158,8 +158,8 @@ func (p *Path) RemoveAll() error {
 	return p.Fs().RemoveAll(p.String())
 }
 
-// Rename renames a file
-func (p *Path) Rename(newname string) error {
+// RenameStr renames a file
+func (p *Path) RenameStr(newname string) error {
 	if err := p.Fs().Rename(p.String(), newname); err != nil {
 		return err
 	}
@@ -169,10 +169,9 @@ func (p *Path) Rename(newname string) error {
 	return nil
 }
 
-// RenamePath is the same as Rename except the argument is a Path object. The attributes
-// of the path object is retained and does not inherit anything from target.
-func (p *Path) RenamePath(target *Path) error {
-	return p.Rename(target.String())
+// Rename renames a file
+func (p *Path) Rename(target *Path) error {
+	return p.RenameStr(target.String())
 }
 
 // Stat returns the os.FileInfo of the given path
@@ -392,7 +391,7 @@ func (p *Path) Join(elems ...string) *Path {
 	for _, path := range elems {
 		paths = append(paths, path)
 	}
-	return NewPathAfero(filepath.Join(paths...), p.Fs())
+	return NewPathAfero(strings.Join(paths, p.Sep), p.Fs())
 }
 
 // JoinPath is the same as Join() except it accepts a path object
@@ -451,6 +450,13 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 	return NewPathAfero(strings.Join(relativePath, "/"), p.Fs()), nil
 }
 
+// RelativeToStr computes a relative version of path to the other path. For instance,
+// if the object is /path/to/foo.txt and you provide /path/ as the argment, the
+// returned Path object will represent to/foo.txt.
+func (p *Path) RelativeToStr(other string) (*Path, error) {
+	return p.RelativeTo(NewPathAfero(other, p.Fs()))
+}
+
 // Lstat lstat's the path if the underlying afero filesystem supports it. If
 // the filesystem does not support afero.Lstater, or if the filesystem implements
 // afero.Lstater but returns false for the "lstat called" return value.
@@ -473,6 +479,14 @@ func (p *Path) Lstat() (os.FileInfo, error) {
 // *********************************
 // * filesystem-specific functions *
 // *********************************
+
+// SymlinkStr symlinks to the target location. This will fail if the underlying
+// afero filesystem does not implement afero.Linker.
+//
+// THIS METHOD IS NOT TYPE SAFE.
+func (p *Path) SymlinkStr(target string) error {
+	return p.Symlink(NewPathAfero(target, p.Fs()))
+}
 
 // Symlink symlinks to the target location. This will fail if the underlying
 // afero filesystem does not implement afero.Linker.
@@ -539,7 +553,7 @@ func (p *Path) DeepEquals(other *Path) (bool, error) {
 		return false, err
 	}
 
-	return selfResolved.Equals(otherResolved), nil
+	return selfResolved.Clean().Equals(otherResolved.Clean()), nil
 }
 
 // Equals returns whether or not the object's path is identical
@@ -587,6 +601,12 @@ func (p *Path) GetLatest() (*Path, error) {
 // Glob returns all matches of pattern relative to this object's path.
 func (p *Path) Glob(pattern string) ([]*Path, error) {
 	return Glob(p.Fs(), p.Join(pattern).String())
+}
+
+// Clean returns a new object that is a lexically-cleaned
+// version of Path.
+func (p *Path) Clean() *Path {
+	return NewPathAfero(filepath.Clean(p.String()), p.Fs())
 }
 
 // Mtime returns the modification time of the given path.
