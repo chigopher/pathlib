@@ -102,9 +102,63 @@ type Walk struct {
 	root *Path
 }
 
+type WalkOptsFunc func(config *WalkOpts)
+
+func WalkDepth(depth int) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.Depth = depth
+	}
+}
+
+func WalkAlgorithm(algo Algorithm) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.Algorithm = algo
+	}
+}
+
+func WalkFollowSymlinks(follow bool) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.FollowSymlinks = follow
+	}
+}
+
+func WalkMinimumFileSize(size int64) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.MinimumFileSize = size
+	}
+}
+
+func WalkMaximumFileSize(size int64) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.MaximumFileSize = size
+	}
+}
+
+func WalkVisitFiles(value bool) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.VisitFiles = value
+	}
+}
+
+func WalkVisitDirs(value bool) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.VisitDirs = value
+	}
+}
+
+func WalkVisitSymlinks(value bool) WalkOptsFunc {
+	return func(config *WalkOpts) {
+		config.VisitSymlinks = value
+	}
+}
+
 // NewWalk returns a new Walk struct with default values applied
-func NewWalk(root *Path) (*Walk, error) {
-	return NewWalkWithOpts(root, DefaultWalkOpts())
+func NewWalk(root *Path, opts ...WalkOptsFunc) (*Walk, error) {
+	config := DefaultWalkOpts()
+	for _, opt := range opts {
+		opt(config)
+	}
+	return NewWalkWithOpts(root, config)
 }
 
 // NewWalkWithOpts returns a Walk object with the given WalkOpts applied
