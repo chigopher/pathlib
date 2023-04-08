@@ -236,7 +236,7 @@ func (p *Path) IsEmpty() (bool, error) {
 // is less expensive and does not force the caller to make expensive
 // Stat calls.
 func (p *Path) ReadDir() ([]*Path, error) {
-	var paths []*Path
+	paths := []*Path{}
 	handle, err := p.Open()
 	if err != nil {
 		return paths, err
@@ -388,9 +388,7 @@ func (p *Path) IsAbsolute() bool {
 // the resulting Path object.
 func (p *Path) Join(elems ...string) *Path {
 	paths := []string{p.path}
-	for _, path := range elems {
-		paths = append(paths, path)
-	}
+	paths = append(paths, elems...)
 	return NewPathAfero(strings.Join(paths, p.Sep), p.Fs())
 }
 
@@ -432,7 +430,6 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 	thisParts := p.Parts()
 	otherParts := other.Parts()
 
-	relativePath := []string{}
 	var relativeBase int
 	for idx, part := range otherParts {
 		if thisParts[idx] != part {
@@ -441,7 +438,7 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 		relativeBase = idx
 	}
 
-	relativePath = thisParts[relativeBase+1:]
+	relativePath := thisParts[relativeBase+1:]
 
 	if len(relativePath) == 0 || (len(relativePath) == 1 && relativePath[0] == "") {
 		relativePath = []string{"."}

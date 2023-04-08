@@ -12,10 +12,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// *********
-// * TESTS *
-// *********
-
 // WalkSuiteAll is a set of tests that should be run
 // for all walk algorithms. It asserts the behaviors that
 // are identical between all algorithms.
@@ -240,6 +236,60 @@ func TestWalk_Walk(t *testing.T) {
 			}
 			if err := w.Walk(tt.args.walkFn); (err != nil) != tt.wantErr {
 				t.Errorf("Walk.Walk() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewWalk(t *testing.T) {
+	type args struct {
+		opts []WalkOptsFunc
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Walk
+		wantErr bool
+	}{
+		{
+			name: "test all WalkOptsFunc",
+			args: args{
+				opts: []WalkOptsFunc{
+					WalkVisitSymlinks(true),
+					WalkVisitDirs(true),
+					WalkVisitFiles(true),
+					WalkMaximumFileSize(1000),
+					WalkMinimumFileSize(500),
+					WalkFollowSymlinks(true),
+					WalkAlgorithm(AlgorithmDepthFirst),
+					WalkDepth(10),
+				},
+			},
+			want: &Walk{
+				Opts: &WalkOpts{
+					VisitSymlinks:   true,
+					VisitDirs:       true,
+					VisitFiles:      true,
+					MaximumFileSize: 1000,
+					MinimumFileSize: 500,
+					FollowSymlinks:  true,
+					Algorithm:       AlgorithmDepthFirst,
+					Depth:           10,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpdir := NewPath(t.TempDir())
+			got, err := NewWalk(tmpdir, tt.args.opts...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewWalk() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			tt.want.root = tmpdir
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewWalk() = %v, want %v", got, tt.want)
 			}
 		})
 	}
