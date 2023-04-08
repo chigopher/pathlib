@@ -70,13 +70,13 @@ func (p *PathSuite) TestChmod() {
 	file := p.tmpdir.Join("file1.txt")
 	require.NoError(p.T(), file.WriteFile([]byte("")))
 
-	file.Chmod(0o777)
+	require.NoError(p.T(), file.Chmod(0o777))
 	fileInfo, err := file.Stat()
 	require.NoError(p.T(), err)
 
 	assert.Equal(p.T(), os.FileMode(0o777), fileInfo.Mode()&os.ModePerm)
 
-	file.Chmod(0o755)
+	require.NoError(p.T(), file.Chmod(0o755))
 	fileInfo, err = file.Stat()
 	require.NoError(p.T(), err)
 
@@ -198,6 +198,7 @@ func (p *PathSuite) TestOpen() {
 
 	readBytes := make([]byte, len(msg)+5)
 	n, err := fileHandle.Read(readBytes)
+	assert.NoError(p.T(), err)
 	p.Equal(len(msg), n)
 	p.Equal(msg, string(readBytes[0:n]))
 }
