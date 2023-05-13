@@ -464,6 +464,7 @@ func TestPathPosix_RelativeTo(t *testing.T) {
 		{"9", "/cool/cats/write/cool/code/file.csv", "/cool/cats/write", "cool/code/file.csv", false},
 		{"10", "/etc/passwd", "////////////", "etc/passwd", false},
 		{"11", "/etc/passwd/////", "/", "etc/passwd", false},
+		{"12", "/etc/passwd", "/etc/passwd/test", "/etc/passwd", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
