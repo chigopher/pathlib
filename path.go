@@ -433,7 +433,7 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 	var relativeBase int
 	for idx, part := range otherParts {
 		if idx >= len(thisParts) || thisParts[idx] != part {
-			return p, fmt.Errorf("%s does not start with %s", thisPathNormalized, otherPathNormalized)
+			return p, fmt.Errorf("%s does not start with %s: %w", thisPathNormalized, otherPathNormalized, ErrRelativeTo)
 		}
 		relativeBase = idx
 	}

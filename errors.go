@@ -12,6 +12,8 @@ var (
 	ErrInvalidAlgorithm = fmt.Errorf("invalid algorithm specified")
 	// ErrLstatNotPossible specifies that the filesystem does not support lstat-ing
 	ErrLstatNotPossible = fmt.Errorf("lstat is not possible")
+	// ErrRelativeTo indicates that we could not make one path relative to another
+	ErrRelativeTo = fmt.Errorf("failed to make path relative to other")
 	// ErrStopWalk indicates to the Walk function that the walk should be aborted
 	ErrStopWalk = fmt.Errorf("stop filesystem walk")
 )
