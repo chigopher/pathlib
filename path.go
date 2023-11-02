@@ -26,20 +26,40 @@ type Path struct {
 	Sep string
 }
 
-// NewPath returns a new OS path
-func NewPath(path string) *Path {
-	return NewPathAfero(path, afero.NewOsFs())
+type PathOpts func(p *Path)
+
+func PathWithAfero(fs afero.Fs) PathOpts {
+	return func(p *Path) {
+		p.fs = fs
+	}
 }
 
-// NewPathAfero returns a Path object with the given Afero object
-func NewPathAfero(path string, fs afero.Fs) *Path {
-	return &Path{
+func PathWithSeperator(sep string) PathOpts {
+	return func(p *Path) {
+		p.Sep = sep
+	}
+}
+
+// NewPath returns a new OS path
+func NewPath(path string, opts ...PathOpts) *Path {
+	p := &Path{
 		path:            path,
-		fs:              fs,
+		fs:              afero.NewOsFs(),
 		DefaultFileMode: DefaultFileMode,
 		DefaultDirMode:  DefaultDirMode,
 		Sep:             string(os.PathSeparator),
 	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
+// NewPathAfero returns a Path object with the given Afero object
+//
+// Deprecated: Use the PathWithAfero option in Newpath instead.
+func NewPathAfero(path string, fs afero.Fs) *Path {
+	return NewPath(path, PathWithAfero(fs))
 }
 
 // Glob returns all of the path objects matched by the given pattern
