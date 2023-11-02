@@ -502,3 +502,76 @@ func TestPath_Parts(t *testing.T) {
 		})
 	}
 }
+
+func TestPath_Copy(t *testing.T) {
+	tests := []struct {
+		name            string
+		srcContents     string
+		dstContents     string
+		wantDstContents string
+		createDstFile   bool
+		wantErr         bool
+	}{
+		{
+			name:            "copy empty file to existing non-empty file",
+			srcContents:     "",
+			dstContents:     "foobar",
+			wantDstContents: "",
+			createDstFile:   true,
+		},
+		{
+			name:            "copy empty file to existing empty file",
+			srcContents:     "",
+			dstContents:     "",
+			wantDstContents: "",
+			createDstFile:   true,
+		},
+		{
+			name:            "copy empty file to non-existing file",
+			srcContents:     "",
+			wantDstContents: "",
+			createDstFile:   false,
+		},
+		{
+			name:            "copy non-empty file to existing non-empty file",
+			srcContents:     "foobar",
+			dstContents:     "hello world",
+			wantDstContents: "foobar",
+			createDstFile:   true,
+		},
+		{
+			name:            "copy non-empty file to existing empty file",
+			srcContents:     "foobar",
+			dstContents:     "",
+			wantDstContents: "foobar",
+			createDstFile:   true,
+		},
+		{
+			name:            "copy non-empty file to non-existing file",
+			srcContents:     "foobar",
+			wantDstContents: "foobar",
+			createDstFile:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpdir := NewPath(t.TempDir())
+			src := tmpdir.Join("src.txt")
+			dst := tmpdir.Join("dst.txt")
+			require.NoError(t, src.WriteFile([]byte(tt.srcContents)))
+
+			if tt.createDstFile {
+				require.NoError(t, dst.WriteFile([]byte(tt.dstContents)))
+			}
+
+			_, err := src.Copy(dst)
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+
+			dstBytes, err := dst.ReadFile()
+			require.NoError(t, err)
+			assert.Equal(t, []byte(tt.wantDstContents), dstBytes)
+		})
+	}
+}

@@ -615,6 +615,24 @@ func (p *Path) Mtime() (time.Time, error) {
 	return Mtime(stat)
 }
 
+// Copy copies the path to another path using io.Copy.
+// Returned is the number of bytes copied and any error values.
+// The destination file is truncated if it exists, and is created
+// if it does not exist.
+func (p *Path) Copy(other *Path) (int64, error) {
+	srcFile, err := p.Open()
+	if err != nil {
+		return 0, fmt.Errorf("opening source file: %w", err)
+	}
+	defer srcFile.Close()
+	dstFile, err := other.OpenFile(os.O_TRUNC | os.O_CREATE | os.O_WRONLY)
+	if err != nil {
+		return 0, fmt.Errorf("opening destination file: %w", err)
+	}
+	defer dstFile.Close()
+	return io.Copy(dstFile, srcFile)
+}
+
 // Mtime returns the mtime described in the given os.FileInfo object
 func Mtime(fileInfo os.FileInfo) (time.Time, error) {
 	return fileInfo.ModTime(), nil
