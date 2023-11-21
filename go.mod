@@ -1,6 +1,6 @@
 module github.com/chigopher/pathlib
 
-go 1.18
+go 1.21
 
 require (
 	github.com/spf13/afero v1.4.0
@@ -18,6 +18,6 @@ require (
 )
 
 retract (
-	v1.0.0 // Published accidentally
 	v1.0.1
+	v1.0.0 // Published accidentally
 )

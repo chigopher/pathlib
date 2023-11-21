@@ -299,8 +299,6 @@ func (p *Path) Parent() *Path {
 //
 // This will fail if the underlying afero filesystem does not implement
 // afero.LinkReader.
-//
-// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) Readlink() (*Path, error) {
 	linkReader, ok := p.Fs().(afero.LinkReader)
 	if !ok {
@@ -361,8 +359,6 @@ func resolveAllHelper(path *Path) (*Path, error) {
 // should be identical to the `readlink -f` command from POSIX OSs.
 // This will fail if the underlying afero filesystem does not implement
 // afero.LinkReader. The path will be returned unchanged on errors.
-//
-// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) ResolveAll() (*Path, error) {
 	return resolveAllHelper(p)
 }
@@ -459,8 +455,6 @@ func (p *Path) RelativeToStr(other string) (*Path, error) {
 // afero.Lstater but returns false for the "lstat called" return value.
 //
 // A nil os.FileInfo is returned on errors.
-//
-// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) Lstat() (os.FileInfo, error) {
 	lStater, ok := p.Fs().(afero.Lstater)
 	if !ok {
@@ -473,22 +467,14 @@ func (p *Path) Lstat() (os.FileInfo, error) {
 	return stat, err
 }
 
-// *********************************
-// * filesystem-specific functions *
-// *********************************
-
 // SymlinkStr symlinks to the target location. This will fail if the underlying
 // afero filesystem does not implement afero.Linker.
-//
-// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) SymlinkStr(target string) error {
 	return p.Symlink(NewPathAfero(target, p.Fs()))
 }
 
 // Symlink symlinks to the target location. This will fail if the underlying
 // afero filesystem does not implement afero.Linker.
-//
-// THIS METHOD IS NOT TYPE SAFE.
 func (p *Path) Symlink(target *Path) error {
 	symlinker, ok := p.fs.(afero.Linker)
 	if !ok {
@@ -497,10 +483,6 @@ func (p *Path) Symlink(target *Path) error {
 
 	return symlinker.SymlinkIfPossible(target.path, p.path)
 }
-
-// ****************************************
-// * chigopher/pathlib-specific functions *
-// ****************************************
 
 // String returns the string representation of the path
 func (p *Path) String() string {

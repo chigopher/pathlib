@@ -2,11 +2,12 @@ package pathlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	os "os"
 	"reflect"
 	"testing"
 
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -26,7 +27,7 @@ type WalkSuiteAll struct {
 func (w *WalkSuiteAll) SetupTest() {
 	var err error
 
-	tmpdir, err := ioutil.TempDir("", "")
+	tmpdir, err := os.MkdirTemp("", "")
 	require.NoError(w.T(), err)
 
 	w.Fs = afero.NewOsFs()
@@ -293,4 +294,38 @@ func TestNewWalk(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWalkPreOrderDFS(t *testing.T) {
+	root := NewPath(t.TempDir())
+	children := []string{
+		"1.txt",
+		"2.txt",
+		"3.txt",
+		"subdir/4.txt",
+		"subdir/5.txt",
+	}
+	for _, child := range children {
+		c := root.Join(child)
+		require.NoError(t, c.Parent().MkdirAll())
+		require.NoError(t, c.WriteFile([]byte("hello")))
+
+	}
+	walker, err := NewWalk(
+		root,
+		WalkAlgorithm(AlgorithmPreOrderDepthFirst),
+		WalkSortChildren(true),
+		WalkVisitDirs(false),
+	)
+	require.NoError(t, err)
+	seenChildren := []string{}
+	err = walker.Walk(func(path *Path, info os.FileInfo, err error) error {
+		require.NoError(t, err)
+		relative, err := path.RelativeTo(root)
+		require.NoError(t, err)
+		seenChildren = append(seenChildren, relative.String())
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, children, seenChildren)
 }
