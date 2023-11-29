@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -24,12 +23,7 @@ type PathSuite struct {
 }
 
 func (p *PathSuite) SetupTest() {
-	// We actually can't use the MemMapFs because some of the tests
-	// are testing symlink behavior. We might want to split these
-	// tests out to use MemMapFs when possible.
-	tmpdir, err := ioutil.TempDir("", "")
-	require.NoError(p.T(), err)
-	p.tmpdir = NewPath(tmpdir)
+	p.tmpdir = NewPath(p.T().TempDir())
 }
 
 func (p *PathSuite) TeardownTest() {

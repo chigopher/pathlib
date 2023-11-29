@@ -1,6 +1,6 @@
 module github.com/chigopher/pathlib
 
-go 1.18
+go 1.21
 
 require (
 	github.com/spf13/afero v1.4.0
