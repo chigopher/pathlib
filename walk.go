@@ -90,9 +90,13 @@ const (
 	// AlgorithmDepthFirst is a walk algorithm. More specifically, it is a post-order
 	// depth first search whereby subdirectories are recursed into before
 	// visiting the children of the current directory.
+	// DEPRECATED: Use AlgorithmPostOrderDepthFirst
 	AlgorithmDepthFirst
-	// AlgorithmPreOrderDepthFirst is a walk algorithm. It visits all of a node's children
-	// before recursing into the subdirectories.
+	// AlgorithmPostOrderDepthFirst is a walk algorithm that recurses into all of its children
+	// before visiting any of a node's elements.
+	AlgorithmPostOrderDepthFirst
+	// AlgorithmPreOrderDepthFirst is a walk algorithm. It visits all of a node's elements
+	// before recursing into its children.
 	AlgorithmPreOrderDepthFirst
 )
 
@@ -205,7 +209,7 @@ func (w *Walk) walkDFS(walkFn WalkFunc, root *Path, currentDepth int) error {
 		// Since we are doing depth-first, we have to first recurse through all the directories,
 		// and save all non-directory objects so we can defer handling at a later time.
 		if IsDir(info.Mode()) {
-			if err := w.walkDFS(walkFn, child, currentDepth+1); err != nil {
+			if err := w.walkDFS(walkFn, child, currentDepth+1); err != nil && !errors.Is(err, ErrWalkSkipSubtree) {
 				return err
 			}
 		}
@@ -316,7 +320,9 @@ func (w *Walk) walkBasic(walkFn WalkFunc, root *Path, currentDepth int) error {
 
 	err := w.iterateImmediateChildren(root, func(child *Path, info os.FileInfo, encounteredErr error) error {
 		if IsDir(info.Mode()) {
-			if err := w.walkBasic(walkFn, child, currentDepth+1); err != nil {
+			// In the case the error is ErrWalkSkipSubtree, we ignore it as we've already
+			// exited from the recursive call. Any other error should be bubbled up.
+			if err := w.walkBasic(walkFn, child, currentDepth+1); err != nil && !errors.Is(err, ErrWalkSkipSubtree) {
 				return err
 			}
 		}
@@ -364,7 +370,7 @@ func (w *Walk) walkPreOrderDFS(walkFn WalkFunc, root *Path, currentDepth int) er
 		return err
 	}
 	for _, dir := range dirs {
-		if err := w.walkPreOrderDFS(walkFn, dir, currentDepth+1); err != nil {
+		if err := w.walkPreOrderDFS(walkFn, dir, currentDepth+1); err != nil && !errors.Is(err, ErrWalkSkipSubtree) {
 			return err
 		}
 	}
@@ -374,12 +380,15 @@ func (w *Walk) walkPreOrderDFS(walkFn WalkFunc, root *Path, currentDepth int) er
 // WalkFunc is the function provided to the Walk function for each directory.
 type WalkFunc func(path *Path, info os.FileInfo, err error) error
 
-// Walk walks the directory using the algorithm specified in the configuration.
+// Walk walks the directory using the algorithm specified in the configuration. Your WalkFunc
+// may return any of the ErrWalk* errors to control various behavior of the walker. See the documentation
+// of each error for more details.
 func (w *Walk) Walk(walkFn WalkFunc) error {
 	funcs := map[Algorithm]func(walkFn WalkFunc, root *Path, currentDepth int) error{
-		AlgorithmBasic:              w.walkBasic,
-		AlgorithmDepthFirst:         w.walkDFS,
-		AlgorithmPreOrderDepthFirst: w.walkPreOrderDFS,
+		AlgorithmBasic:               w.walkBasic,
+		AlgorithmDepthFirst:          w.walkDFS,
+		AlgorithmPostOrderDepthFirst: w.walkDFS,
+		AlgorithmPreOrderDepthFirst:  w.walkPreOrderDFS,
 	}
 	algoFunc, ok := funcs[w.Opts.Algorithm]
 	if !ok {

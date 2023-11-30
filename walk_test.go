@@ -4,6 +4,7 @@ import (
 	"fmt"
 	os "os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -296,36 +297,212 @@ func TestNewWalk(t *testing.T) {
 	}
 }
 
-func TestWalkPreOrderDFS(t *testing.T) {
-	root := NewPath(t.TempDir())
-	children := []string{
-		"1.txt",
-		"2.txt",
-		"3.txt",
-		"subdir/4.txt",
-		"subdir/5.txt",
-	}
-	for _, child := range children {
-		c := root.Join(child)
-		require.NoError(t, c.Parent().MkdirAll())
-		require.NoError(t, c.WriteFile([]byte("hello")))
+type FSObject struct {
+	path     *Path
+	contents string
+	dir      bool
+}
 
+func TestWalkerOrder(t *testing.T) {
+	type test struct {
+		name          string
+		algorithm     Algorithm
+		walkOpts      []WalkOptsFunc
+		objects       []FSObject
+		expectedOrder []*Path
 	}
-	walker, err := NewWalk(
-		root,
-		WalkAlgorithm(AlgorithmPreOrderDepthFirst),
-		WalkSortChildren(true),
-		WalkVisitDirs(false),
-	)
-	require.NoError(t, err)
-	seenChildren := []string{}
-	err = walker.Walk(func(path *Path, info os.FileInfo, err error) error {
-		require.NoError(t, err)
-		relative, err := path.RelativeTo(root)
-		require.NoError(t, err)
-		seenChildren = append(seenChildren, relative.String())
-		return nil
-	})
-	require.NoError(t, err)
-	assert.Equal(t, children, seenChildren)
+	for _, tt := range []test{
+		{
+			name:      "Pre-Order DFS simple",
+			algorithm: AlgorithmPreOrderDepthFirst,
+			objects: []FSObject{
+				{path: NewPath("1.txt")},
+				{path: NewPath("2.txt")},
+				{path: NewPath("3.txt")},
+				{path: NewPath("subdir"), dir: true},
+				{path: NewPath("subdir").Join("4.txt")},
+			},
+			walkOpts: []WalkOptsFunc{WalkVisitDirs(true)},
+			expectedOrder: []*Path{
+				NewPath("1.txt"),
+				NewPath("2.txt"),
+				NewPath("3.txt"),
+				NewPath("subdir"),
+				NewPath("subdir").Join("4.txt"),
+			},
+		},
+		{
+			name:      "Post-Order DFS simple",
+			algorithm: AlgorithmDepthFirst,
+			objects: []FSObject{
+				{path: NewPath("1.txt")},
+				{path: NewPath("2.txt")},
+				{path: NewPath("3.txt")},
+				{path: NewPath("subdir"), dir: true},
+				{path: NewPath("subdir").Join("4.txt")},
+			},
+			walkOpts: []WalkOptsFunc{WalkVisitDirs(true)},
+			expectedOrder: []*Path{
+				NewPath("subdir").Join("4.txt"),
+				NewPath("1.txt"),
+				NewPath("2.txt"),
+				NewPath("3.txt"),
+				NewPath("subdir"),
+			},
+		},
+		{
+			name:      "Basic simple",
+			algorithm: AlgorithmBasic,
+			objects: []FSObject{
+				{path: NewPath("1")},
+				{path: NewPath("2"), dir: true},
+				{path: NewPath("2").Join("3")},
+				{path: NewPath("4")},
+			},
+			walkOpts: []WalkOptsFunc{WalkVisitDirs(true)},
+			expectedOrder: []*Path{
+				NewPath("1"),
+				NewPath("2").Join("3"),
+				NewPath("2"),
+				NewPath("4"),
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			root := NewPath(t.TempDir())
+			for _, child := range tt.objects {
+				c := root.JoinPath(child.path)
+				if child.dir {
+					require.NoError(t, c.Mkdir())
+					continue
+				}
+				require.NoError(t, c.WriteFile([]byte(child.contents)))
+			}
+			opts := []WalkOptsFunc{WalkAlgorithm(tt.algorithm), WalkSortChildren(true)}
+			opts = append(opts, tt.walkOpts...)
+			walker, err := NewWalk(root, opts...)
+			require.NoError(t, err)
+
+			actualOrder := []*Path{}
+			require.NoError(
+				t,
+				walker.Walk(func(path *Path, info os.FileInfo, err error) error {
+					require.NoError(t, err)
+					relative, err := path.RelativeTo(root)
+					require.NoError(t, err)
+					actualOrder = append(actualOrder, relative)
+					return nil
+				}),
+			)
+			require.Equal(t, len(tt.expectedOrder), len(actualOrder))
+			for i, path := range tt.expectedOrder {
+				assert.True(t, path.Equals(actualOrder[i]), "incorrect ordering at %d: %s != %s", i, path, actualOrder[i])
+			}
+		})
+	}
+}
+
+// TestErrWalkSkipSubtree tests the behavior of each algorithm when we tell it to skip a subtree.
+func TestErrWalkSkipSubtree(t *testing.T) {
+	type test struct {
+		name      string
+		algorithm Algorithm
+		tree      []*Path
+		skipAt    *Path
+		expected  []*Path
+	}
+
+	for _, tt := range []test{
+		{
+			// In AlgorithmBasic, the ordering in which children/nodes are visited
+			// is filesystem and OS dependent. Some filesystems return paths in a lexically-ordered
+			// manner, some return them in the order in which they were created. For this test,
+			// we tell the walker to order the children before iterating over them. That way,
+			// the test will visit "subdir1/subdir2/foo.txt" before "subdir1/subdir2/subdir3/foo.txt",
+			// in which case we would tell the walker to skip the subdir3 subtree before it recursed.
+			"Basic",
+			AlgorithmBasic,
+			nil,
+			NewPath("subdir1").Join("subdir2", "foo.txt"),
+			[]*Path{
+				NewPath("foo1.txt"),
+				NewPath("subdir1").Join("foo.txt"),
+				NewPath("subdir1").Join("subdir2", "foo.txt"),
+			},
+		},
+		{
+			"PreOrderDFS",
+			AlgorithmPreOrderDepthFirst,
+			nil,
+			NewPath("subdir1").Join("subdir2", "foo.txt"),
+			[]*Path{
+				NewPath("foo1.txt"),
+				NewPath("subdir1").Join("foo.txt"),
+				NewPath("subdir1").Join("subdir2", "foo.txt"),
+			},
+		},
+		// Note about the PostOrderDFS case. ErrWalkSkipSubtree effectively
+		// has no meaning to this algorithm because in this case, the algorithm
+		// visits all children before visiting each node. Thus, our WalkFunc has
+		// no opportunity to tell it to skip a particular subtree. This test
+		// serves to ensure this behavior doesn't change.
+		{
+			"PostOrderDFS",
+			AlgorithmPostOrderDepthFirst,
+			nil,
+			NewPath("subdir1").Join("subdir2", "foo.txt"),
+			[]*Path{
+				NewPath("foo1.txt"),
+				NewPath("subdir1").Join("foo.txt"),
+				NewPath("subdir1").Join("subdir2", "foo.txt"),
+				NewPath("subdir1").Join("subdir2", "subdir3", "foo.txt"),
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			root := NewPath(t.TempDir())
+			walker, err := NewWalk(root, WalkAlgorithm(tt.algorithm), WalkVisitDirs(false), WalkSortChildren(true))
+			require.NoError(t, err)
+
+			var tree []*Path
+			if tt.tree == nil {
+				tree = []*Path{
+					NewPath("foo1.txt"),
+					NewPath("subdir1").Join("foo.txt"),
+					NewPath("subdir1").Join("subdir2", "foo.txt"),
+					NewPath("subdir1").Join("subdir2", "subdir3", "foo.txt"),
+				}
+			}
+			for _, path := range tree {
+				p := root.JoinPath(path)
+				require.NoError(t, p.Parent().MkdirAll())
+				require.NoError(t, p.WriteFile([]byte("")))
+			}
+
+			visited := map[string]struct{}{}
+			require.NoError(t, walker.Walk(func(path *Path, info os.FileInfo, err error) error {
+				t.Logf("visited: %v", path.String())
+				require.NoError(t, err)
+				rel, err := path.RelativeTo(root)
+				require.NoError(t, err)
+				visited[rel.String()] = struct{}{}
+				if rel.Equals(tt.skipAt) {
+					return ErrWalkSkipSubtree
+				}
+				return nil
+			}))
+			visitedSorted := []string{}
+			for key := range visited {
+				visitedSorted = append(visitedSorted, key)
+			}
+			slices.Sort(visitedSorted)
+
+			expected := []string{}
+			for _, path := range tt.expected {
+				expected = append(expected, path.String())
+			}
+			assert.Equal(t, expected, visitedSorted)
+
+		})
+	}
 }
