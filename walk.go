@@ -395,7 +395,7 @@ func (w *Walk) Walk(walkFn WalkFunc) error {
 		return ErrInvalidAlgorithm
 	}
 	if err := algoFunc(walkFn, w.root, 0); err != nil {
-		if errors.Is(err, ErrStopWalk) {
+		if errors.Is(err, errWalkControl) {
 			return nil
 		}
 		return err

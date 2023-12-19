@@ -441,6 +441,15 @@ func TestErrWalkSkipSubtree(t *testing.T) {
 				NewPath("subdir1").Join("subdir2", "foo.txt"),
 			},
 		},
+		{
+			"PreOrderDFS skip at root",
+			AlgorithmPreOrderDepthFirst,
+			nil,
+			NewPath("foo1.txt"),
+			[]*Path{
+				NewPath("foo1.txt"),
+			},
+		},
 		// Note about the PostOrderDFS case. ErrWalkSkipSubtree effectively
 		// has no meaning to this algorithm because in this case, the algorithm
 		// visits all children before visiting each node. Thus, our WalkFunc has
@@ -461,7 +470,7 @@ func TestErrWalkSkipSubtree(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			root := NewPath(t.TempDir())
-			walker, err := NewWalk(root, WalkAlgorithm(tt.algorithm), WalkVisitDirs(false), WalkSortChildren(true))
+			walker, err := NewWalk(root, WalkAlgorithm(tt.algorithm), WalkVisitDirs(false), WalkVisitFiles(true), WalkSortChildren(true))
 			require.NoError(t, err)
 
 			var tree []*Path
