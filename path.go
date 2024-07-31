@@ -55,6 +55,18 @@ func NewPath(path string, opts ...PathOpts) *Path {
 	return p
 }
 
+// NewPath returns a new Path object with the given path and options from a prototype
+func NewPathFromPath(path string, proto *Path) *Path {
+	p := &Path{
+		path:            path,
+		fs:              proto.fs,
+		DefaultFileMode: proto.DefaultFileMode,
+		DefaultDirMode:  proto.DefaultDirMode,
+		Sep:             proto.Sep,
+	}
+	return p
+}
+
 // NewPathAfero returns a Path object with the given Afero object
 //
 // Deprecated: Use the PathWithAfero option in Newpath instead.
@@ -312,7 +324,7 @@ func (p *Path) Name() string {
 
 // Parent returns the Path object of the parent directory
 func (p *Path) Parent() *Path {
-	return NewPathAfero(filepath.Dir(p.String()), p.Fs())
+	return NewPathFromPath(filepath.Dir(p.String()), p)
 }
 
 // Readlink returns the target path of a symlink.
@@ -329,7 +341,7 @@ func (p *Path) Readlink() (*Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewPathAfero(resolvedPathStr, p.fs), nil
+	return NewPath(resolvedPathStr, PathWithAfero(p.fs), PathWithSeperator(p.Sep)), nil
 }
 
 func resolveIfSymlink(path *Path) (*Path, bool, error) {
@@ -355,7 +367,7 @@ func resolveAllHelper(path *Path) (*Path, error) {
 		rightOfComponent := parts[i+1:]
 		upToComponent := parts[:i+1]
 
-		componentPath := NewPathAfero(strings.Join(upToComponent, path.Sep), path.Fs())
+		componentPath := NewPathFromPath(strings.Join(upToComponent, path.Sep), path)
 		resolved, isSymlink, err := resolveIfSymlink(componentPath)
 		if err != nil {
 			return path, err
@@ -405,7 +417,7 @@ func (p *Path) IsAbsolute() bool {
 func (p *Path) Join(elems ...string) *Path {
 	paths := []string{p.path}
 	paths = append(paths, elems...)
-	return NewPathAfero(strings.Join(paths, p.Sep), p.Fs())
+	return NewPathFromPath(strings.Join(paths, p.Sep), p)
 }
 
 // JoinPath is the same as Join() except it accepts a path object
@@ -460,14 +472,14 @@ func (p *Path) RelativeTo(other *Path) (*Path, error) {
 		relativePath = []string{"."}
 	}
 
-	return NewPathAfero(strings.Join(relativePath, "/"), p.Fs()), nil
+	return NewPathFromPath(strings.Join(relativePath, "/"), p), nil
 }
 
 // RelativeToStr computes a relative version of path to the other path. For instance,
 // if the object is /path/to/foo.txt and you provide /path/ as the argment, the
 // returned Path object will represent to/foo.txt.
 func (p *Path) RelativeToStr(other string) (*Path, error) {
-	return p.RelativeTo(NewPathAfero(other, p.Fs()))
+	return p.RelativeTo(NewPathFromPath(other, p))
 }
 
 // Lstat lstat's the path if the underlying afero filesystem supports it. If
@@ -490,7 +502,7 @@ func (p *Path) Lstat() (os.FileInfo, error) {
 // SymlinkStr symlinks to the target location. This will fail if the underlying
 // afero filesystem does not implement afero.Linker.
 func (p *Path) SymlinkStr(target string) error {
-	return p.Symlink(NewPathAfero(target, p.Fs()))
+	return p.Symlink(NewPathFromPath(target, p))
 }
 
 // Symlink symlinks to the target location. This will fail if the underlying
@@ -605,7 +617,7 @@ func (p *Path) Glob(pattern string) ([]*Path, error) {
 // Clean returns a new object that is a lexically-cleaned
 // version of Path.
 func (p *Path) Clean() *Path {
-	return NewPathAfero(filepath.Clean(p.String()), p.Fs())
+	return NewPathFromPath(filepath.Clean(p.String()), p)
 }
 
 // Mtime returns the modification time of the given path.
